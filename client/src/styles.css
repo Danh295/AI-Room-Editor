@@ -652,3 +652,9 @@ button.linky:hover:not(:disabled) {
   font-size: 11px;
   background: var(--bg);
 }
+
+.banner.ok {
+  background: #14301f;
+  border: 1px solid #2a6647;
+  color: #8fe3bd;
+}

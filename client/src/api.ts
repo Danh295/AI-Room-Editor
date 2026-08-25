@@ -28,7 +28,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export interface Health {
   ok: boolean;
   dataDir: string;
-  anthropicKey: boolean;
+  /** Which AI provider the server has a key for, or null if none. */
+  aiProvider: 'gemini' | 'anthropic' | null;
 }
 
 export const api = {

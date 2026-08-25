@@ -167,12 +167,15 @@ export default function App() {
         <aside className="panel">
           <h2>Projects</h2>
 
-          {health && !health.anthropicKey && (
+          {health && !health.aiProvider && (
             <div className="banner warn">
-              No <code>ANTHROPIC_API_KEY</code> set. Drawing and manual entry work
-              normally; AI floor plan tracing and product lookup are unavailable
-              until you add a key to <code>.env</code> and restart the server.
+              No AI key set. Drawing and manual entry work normally; floor plan
+              tracing and product lookup need a key in <code>.env</code> — see{' '}
+              <code>.env.example</code> — then restart the server.
             </div>
+          )}
+          {health?.aiProvider && (
+            <div className="banner ok">AI provider: {health.aiProvider}</div>
           )}
           {!health && (
             <div className="banner error">
