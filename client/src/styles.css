@@ -1,0 +1,257 @@
+:root {
+  --bg: #14161a;
+  --panel: #1b1e24;
+  --panel-2: #22262e;
+  --line: #2e333d;
+  --text: #e6e8ec;
+  --muted: #949aa6;
+  --accent: #5b9dff;
+  --accent-dim: #2f5da8;
+  --danger: #ff6b6b;
+  --ok: #4ec9a5;
+  --warn: #e8b046;
+
+  --radius: 6px;
+  --topbar-h: 48px;
+  --statusbar-h: 26px;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: #2b3039;
+  border-color: #3c434f;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+button.primary {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+
+button.primary:hover:not(:disabled) {
+  background: #3a6fc4;
+}
+
+input,
+select {
+  font: inherit;
+  color: inherit;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 5px 8px;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* ------------------------------------------------------------------ layout */
+
+.app {
+  display: grid;
+  grid-template-rows: var(--topbar-h) 1fr var(--statusbar-h);
+  height: 100%;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.topbar .title {
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.topbar .spacer {
+  flex: 1;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 260px 1fr 280px;
+  min-height: 0;
+}
+
+.panel {
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.panel.right {
+  border-right: none;
+  border-left: 1px solid var(--line);
+}
+
+.panel h2 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.stage {
+  position: relative;
+  min-width: 0;
+  background: #0f1114;
+  display: grid;
+  place-items: center;
+}
+
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 12px;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+/* ------------------------------------------------------------------ pieces */
+
+.save-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.save-dot::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.save-dot[data-state="saved"]::before {
+  background: var(--ok);
+}
+.save-dot[data-state="dirty"]::before,
+.save-dot[data-state="saving"]::before {
+  background: var(--warn);
+}
+.save-dot[data-state="error"]::before {
+  background: var(--danger);
+}
+
+.project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.project-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 6px 8px;
+}
+
+.project-row:hover {
+  background: var(--panel-2);
+}
+
+.project-row[aria-current="true"] {
+  background: var(--panel-2);
+  border-color: var(--accent-dim);
+}
+
+.project-row .meta {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.empty {
+  color: var(--muted);
+  text-align: center;
+  max-width: 380px;
+  line-height: 1.6;
+}
+
+.empty h1 {
+  font-size: 17px;
+  color: var(--text);
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.banner {
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.banner.warn {
+  background: #3a2f14;
+  border: 1px solid #6b5620;
+  color: #f0d69a;
+}
+
+.banner.error {
+  background: #3a1c1c;
+  border: 1px solid #6b2b2b;
+  color: #f3b0b0;
+}
+
+.kbd {
+  font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 1px 5px;
+}
