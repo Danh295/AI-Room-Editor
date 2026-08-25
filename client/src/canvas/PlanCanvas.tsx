@@ -12,6 +12,7 @@ import {
 import { useEditor } from '../store/editorStore.js';
 import { useViewport, toWorld, mmPerPixel } from './viewport.js';
 import { snapPoint, nearestWall, type SnapResult } from './snapping.js';
+import ItemLayer from './ItemLayer.js';
 import {
   GridLayer,
   FloorLayer,
@@ -42,6 +43,7 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
 
   const project = useEditor((s) => s.project);
   const selection = useEditor((s) => s.selection);
+  const library = useEditor((s) => s.library);
   const tool = useEditor((s) => s.tool);
   const draft = useEditor((s) => s.draft);
   const edit = useEditor((s) => s.edit);
@@ -260,8 +262,44 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
   const cursor =
     tool === 'wall' ? 'crosshair' : tool === 'select' ? 'default' : 'copy';
 
+  /** Drop a library item where it was released, snapped to the grid. */
+  const handleDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      const libraryId = e.dataTransfer.getData('application/x-room-item');
+      if (!libraryId || !room || !settings) return;
+
+      const host = containerRef.current?.getBoundingClientRect();
+      if (!host) return;
+
+      const world = toWorld(
+        { x: e.clientX - host.left, y: e.clientY - host.top },
+        useViewport.getState(),
+      );
+      const snapped = snapPoint(world, {
+        room,
+        gridStep: settings.gridStep,
+        snapToGrid: settings.snapToGrid,
+        toleranceMm,
+      });
+
+      useEditor.getState().placeInRoom(libraryId, snapped.point.x, snapped.point.y);
+    },
+    [room, settings, toleranceMm],
+  );
+
   return (
-    <div ref={containerRef} className="canvas-host" style={{ cursor }}>
+    <div
+      ref={containerRef}
+      className="canvas-host"
+      style={{ cursor }}
+      onDragOver={(e) => {
+        // Without preventDefault the browser refuses the drop entirely.
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+      }}
+      onDrop={handleDrop}
+    >
       <Stage
         ref={stageRef}
         width={vp.width}
@@ -297,6 +335,15 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
             vp={vp}
             selection={selection}
             onClick={(id) => select([id])}
+          />
+          <ItemLayer
+            items={project.items}
+            library={library}
+            selection={selection}
+            vp={vp}
+            units={settings.units}
+            renderMode={settings.itemRender}
+            onSelect={(id, additive) => toggleSelect(id, additive)}
           />
           {tool === 'select' && (
             <VertexLayer

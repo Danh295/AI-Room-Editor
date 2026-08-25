@@ -6,6 +6,7 @@ import { useEditor, rememberProject, recallProject, type Tool } from './store/ed
 import { useViewport } from './canvas/viewport.js';
 import PlanCanvas from './canvas/PlanCanvas.js';
 import RoomPanel from './panels/RoomPanel.js';
+import LibraryPanel from './panels/LibraryPanel.js';
 
 const SAVE_LABEL: Record<string, string> = {
   idle: 'No project',
@@ -195,8 +196,7 @@ export default function App() {
             ))}
           </div>
 
-          <h2>Library</h2>
-          <span className="muted">Coming in the next phase.</span>
+          <LibraryPanel />
         </aside>
 
         <main className="stage">

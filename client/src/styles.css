@@ -425,3 +425,230 @@ button.danger:hover:not(:disabled) {
   gap: 8px;
   margin-top: 16px;
 }
+
+/* ----------------------------------------------------------------- library */
+
+.library-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+button.linky {
+  background: none;
+  border: none;
+  color: var(--accent);
+  padding: 2px 0;
+  font-size: 12px;
+}
+
+button.linky:hover:not(:disabled) {
+  background: none;
+  text-decoration: underline;
+}
+
+.search {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+  margin: 6px 0 12px;
+}
+
+.hint b {
+  color: var(--text);
+}
+
+.cat-group {
+  margin-bottom: 6px;
+}
+
+.cat-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 5px 4px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.cat-header:hover {
+  background: var(--panel-2);
+}
+
+.cat-header .caret {
+  color: var(--muted);
+  width: 10px;
+}
+
+.cat-header .count {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 2px 0 6px 6px;
+}
+
+.item-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: grab;
+  background: var(--panel-2);
+}
+
+.item-card:hover {
+  border-color: var(--accent-dim);
+}
+
+.item-card:active {
+  cursor: grabbing;
+}
+
+.card-thumb {
+  width: 34px;
+  height: 34px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex: 0 0 auto;
+  background: var(--bg);
+}
+
+.card-thumb.swatchy {
+  border: 1px solid var(--line);
+}
+
+.card-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.card-name {
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-meta {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.card-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+}
+
+.item-card:hover .card-actions {
+  opacity: 1;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  padding: 2px 5px;
+  line-height: 1;
+}
+
+.icon-btn:hover:not(:disabled) {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.icon-btn.danger:hover:not(:disabled) {
+  color: var(--danger);
+}
+
+/* ------------------------------------------------------------- item form */
+
+.dialog.wide {
+  width: 420px;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.dialog h4 {
+  margin: 14px 0 7px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.dims-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.dims-row label {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+
+.dims-row input {
+  width: 100%;
+}
+
+.swatch-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  border: 2px solid transparent;
+  padding: 0;
+}
+
+.swatch.active {
+  border-color: var(--accent);
+}
+
+.photo-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.thumb {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 5px;
+  border: 1px solid var(--line);
+}
+
+.thumb.empty {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 11px;
+  background: var(--bg);
+}

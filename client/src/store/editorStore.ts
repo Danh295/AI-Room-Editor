@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
 import type { LibraryItem, Project, ProjectSettings, Pt } from '@room/shared';
-import { createProject, appendWall, startChain, closeChain } from '@room/shared';
+import { createProject, appendWall, startChain, closeChain, placeItem } from '@room/shared';
 import { api } from '../api.js';
 
 /** Which pointer gesture the canvas is currently interpreting. */
@@ -84,6 +84,13 @@ export interface EditorState {
   canRedo: () => boolean;
 
   updateSettings: (patch: Partial<ProjectSettings>) => void;
+
+  // --- library
+  saveLibraryItem: (item: LibraryItem) => Promise<void>;
+  removeLibraryItem: (id: string) => Promise<void>;
+  /** Place a library item into the current room; returns the placement id. */
+  placeInRoom: (libraryId: string, x: number, y: number) => string | null;
+  removePlacement: (placementId: string) => void;
 
   // --- tools and wall drawing
   setTool: (tool: Tool) => void;
@@ -255,6 +262,59 @@ export const useEditor = create<EditorState>((set, get) => {
       get().edit((draft) => {
         Object.assign(draft.settings, patch);
       });
+    },
+
+    async saveLibraryItem(item) {
+      // Update in memory first so the panel reflects the edit immediately;
+      // the file is the source of truth but the round trip shouldn't be felt.
+      const { library } = get();
+      const index = library.findIndex((i) => i.id === item.id);
+      set({
+        library:
+          index >= 0
+            ? library.map((i) => (i.id === item.id ? item : i))
+            : [...library, item],
+      });
+      try {
+        const saved = await api.saveLibraryItem(item);
+        set({
+          library: get().library.map((i) => (i.id === saved.id ? saved : i)),
+        });
+      } catch (err) {
+        console.error('[library] save failed', err);
+        // Roll back to what was on disk rather than showing a phantom item.
+        set({ library: await api.getLibrary().catch(() => get().library) });
+      }
+    },
+
+    async removeLibraryItem(id) {
+      set({ library: get().library.filter((i) => i.id !== id) });
+      try {
+        await api.deleteLibraryItem(id);
+      } catch (err) {
+        console.error('[library] delete failed', err);
+      }
+    },
+
+    placeInRoom(libraryId, x, y) {
+      const { project, library } = get();
+      if (!project) return null;
+      const item = library.find((i) => i.id === libraryId);
+      if (!item) return null;
+
+      const placement = placeItem(item, x, y);
+      get().edit((d) => {
+        d.items.push(placement);
+      });
+      set({ selection: [placement.id] });
+      return placement.id;
+    },
+
+    removePlacement(placementId) {
+      get().edit((d) => {
+        d.items = d.items.filter((i) => i.id !== placementId);
+      });
+      set({ selection: get().selection.filter((id) => id !== placementId) });
     },
 
     setTool(tool) {
