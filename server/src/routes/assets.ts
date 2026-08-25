@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
 import { IMAGES_DIR, imagePath, isSafeId, ensureDataDirs } from '../paths.js';
+import { assertFetchableUrl, fetchWithTimeout } from '../net.js';
 
 export const assetsRouter = Router();
 
@@ -10,7 +11,6 @@ export const assetsRouter = Router();
 const MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024;
 /** Longest edge we keep. Product shots beyond this are wasted pixels on a canvas. */
 const MAX_EDGE = 1600;
-const FETCH_TIMEOUT_MS = 15_000;
 
 function assetIdFor(buffer: Buffer): string {
   return crypto.createHash('sha256').update(buffer).digest('hex').slice(0, 32);
@@ -21,7 +21,7 @@ function assetIdFor(buffer: Buffer): string {
  * content hash, so re-adding the same product photo is free and the canvas
  * never has to reach out to a remote host (which CORS would block anyway).
  */
-async function storeImage(input: Buffer): Promise<{ assetId: string; bytes: number }> {
+export async function storeImage(input: Buffer): Promise<{ assetId: string; bytes: number }> {
   await ensureDataDirs();
 
   const webp = await sharp(input)
@@ -42,40 +42,6 @@ async function storeImage(input: Buffer): Promise<{ assetId: string; bytes: numb
   return { assetId, bytes: webp.length };
 }
 
-/**
- * Only http(s), and never a host that resolves to somewhere on this machine or
- * the local network. Product URLs come from model output, which is influenced
- * by page content — an SSRF guard is cheap and the alternative is a server that
- * will fetch `http://localhost:8787/...` or a cloud metadata endpoint on request.
- */
-function assertFetchableUrl(raw: string): URL {
-  let url: URL;
-  try {
-    url = new URL(raw);
-  } catch {
-    throw new Error('not a valid URL');
-  }
-
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new Error('only http and https URLs are supported');
-  }
-
-  const host = url.hostname.toLowerCase();
-  const blocked =
-    host === 'localhost' ||
-    host === '::1' ||
-    host.endsWith('.localhost') ||
-    host.endsWith('.internal') ||
-    /^127\./.test(host) ||
-    /^10\./.test(host) ||
-    /^192\.168\./.test(host) ||
-    /^169\.254\./.test(host) ||
-    /^172\.(1[6-9]|2\d|3[01])\./.test(host);
-
-  if (blocked) throw new Error('refusing to fetch a local or private address');
-  return url;
-}
-
 /** POST /api/assets/fetch  { url } -> { assetId } */
 assetsRouter.post('/fetch', async (req, res) => {
   const { url } = (req.body ?? {}) as { url?: string };
@@ -83,48 +49,16 @@ assetsRouter.post('/fetch', async (req, res) => {
     return res.status(400).json({ error: 'expected { url }' });
   }
 
-  let parsed: URL;
   try {
-    parsed = assertFetchableUrl(url);
+    return res.json(await storeImageFromUrl(url));
   } catch (err) {
-    return res.status(400).json({ error: (err as Error).message });
-  }
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-  try {
-    const response = await fetch(parsed, {
-      signal: controller.signal,
-      redirect: 'follow',
-      headers: {
-        // Some retail CDNs 403 a bare fetch.
-        'user-agent': 'Mozilla/5.0 (compatible; AIRoomEditor/0.1; +local)',
-        accept: 'image/*,*/*;q=0.8',
-      },
-    });
-
-    if (!response.ok) {
-      return res.status(502).json({ error: `source responded ${response.status}` });
-    }
-
-    const declared = Number(response.headers.get('content-length') ?? '0');
-    if (declared > MAX_DOWNLOAD_BYTES) {
-      return res.status(413).json({ error: 'image too large' });
-    }
-
-    const buffer = Buffer.from(await response.arrayBuffer());
-    if (buffer.length > MAX_DOWNLOAD_BYTES) {
-      return res.status(413).json({ error: 'image too large' });
-    }
-
-    const stored = await storeImage(buffer);
-    return res.json({ ...stored, sourceUrl: parsed.toString() });
-  } catch (err) {
-    const message = (err as Error).name === 'AbortError' ? 'source timed out' : (err as Error).message;
-    return res.status(502).json({ error: message });
-  } finally {
-    clearTimeout(timer);
+    const message = (err as Error).message;
+    const status = /local or private|valid URL|http and https/.test(message)
+      ? 400
+      : /too large/.test(message)
+        ? 413
+        : 502;
+    return res.status(status).json({ error: message });
   }
 });
 
@@ -166,3 +100,24 @@ assetsRouter.get('/:assetId', async (req, res) => {
 });
 
 export { IMAGES_DIR };
+
+
+/**
+ * Download an image by URL and cache it, reusing the same guards and
+ * normalization as the upload path. Used by product ingestion to pull the
+ * og:image off a product page.
+ */
+export async function storeImageFromUrl(
+  rawUrl: string,
+): Promise<{ assetId: string; bytes: number; sourceUrl: string }> {
+  const url = assertFetchableUrl(rawUrl);
+  const response = await fetchWithTimeout(url, { headers: { accept: 'image/*' } });
+  if (!response.ok) throw new Error(`source responded ${response.status}`);
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  if (buffer.length === 0) throw new Error('empty image');
+  if (buffer.length > MAX_DOWNLOAD_BYTES) throw new Error('image too large');
+
+  const stored = await storeImage(buffer);
+  return { ...stored, sourceUrl: url.toString() };
+}

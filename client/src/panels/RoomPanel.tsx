@@ -17,6 +17,7 @@ import {
 import { useEditor, idKind } from '../store/editorStore.js';
 import LengthInput from '../components/LengthInput.js';
 import { fitRoomToView } from '../canvas/PlanCanvas.js';
+import FloorplanDialog from './FloorplanDialog.js';
 
 /** Quick-room dialog: width x length, optionally with a notch. */
 function QuickRoom({ onClose }: { onClose: () => void }) {
@@ -121,6 +122,7 @@ export default function RoomPanel() {
   const updateSettings = useEditor((s) => s.updateSettings);
   const select = useEditor((s) => s.select);
   const [quickOpen, setQuickOpen] = useState(false);
+  const [traceOpen, setTraceOpen] = useState(false);
 
   if (!project) return <span className="muted">No room open.</span>;
 
@@ -151,6 +153,7 @@ export default function RoomPanel() {
 
       <div className="button-row">
         <button onClick={() => setQuickOpen(true)}>Quick room…</button>
+        <button onClick={() => setTraceOpen(true)}>Trace a plan…</button>
         <button onClick={fitRoomToView} disabled={polygon.length === 0}>
           Fit to view
         </button>
@@ -299,6 +302,21 @@ export default function RoomPanel() {
         />
         Snap to grid
       </label>
+      {room.underlay && (
+        <label className="check-row">
+          <input
+            type="checkbox"
+            checked={room.underlay.visible}
+            onChange={(e) =>
+              edit((d) => {
+                if (d.room.underlay) d.room.underlay.visible = e.target.checked;
+              })
+            }
+          />
+          Show traced image
+        </label>
+      )}
+
       <label className="check-row">
         <input
           type="checkbox"
@@ -309,6 +327,7 @@ export default function RoomPanel() {
       </label>
 
       {quickOpen && <QuickRoom onClose={() => setQuickOpen(false)} />}
+      {traceOpen && <FloorplanDialog units={units} onClose={() => setTraceOpen(false)} />}
     </>
   );
 }

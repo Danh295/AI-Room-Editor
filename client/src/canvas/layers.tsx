@@ -1,5 +1,5 @@
-import { Fragment } from 'react';
-import { Group, Line, Circle, Rect, Text, Shape, Arc } from 'react-konva';
+import { Fragment, useEffect, useState } from 'react';
+import { Group, Line, Circle, Rect, Text, Shape, Arc, Image as KonvaImage } from 'react-konva';
 import type { Opening, Pt, Room, UnitSystem, Wall } from '@room/shared';
 import {
   add,
@@ -17,6 +17,7 @@ import {
   wallSegment,
 } from '@room/shared';
 import { visibleWorldRect, type ViewportState } from './viewport.js';
+import { assetUrl } from '../api.js';
 
 const COLORS = {
   gridMinor: '#20242c',
@@ -89,6 +90,51 @@ export function GridLayer({ vp, step }: GridProps) {
           ctx.stroke();
         }
       }}
+    />
+  );
+}
+
+// --------------------------------------------------------------- underlay ---
+
+/**
+ * The traced source image, drawn behind the plan at the scale the trace
+ * established. Its whole purpose is to be visibly wrong: you drag corners onto
+ * it until the walls line up with the drawing.
+ */
+export function UnderlayLayer({ room }: { room: Room }) {
+  const underlay = room.underlay;
+  const [image, setImage] = useState<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    if (!underlay?.assetId) {
+      setImage(null);
+      return;
+    }
+    let cancelled = false;
+    const img = new window.Image();
+    img.src = assetUrl(underlay.assetId);
+    img.onload = () => !cancelled && setImage(img);
+    img.onerror = () => !cancelled && setImage(null);
+    return () => {
+      cancelled = true;
+    };
+  }, [underlay?.assetId]);
+
+  if (!underlay?.visible || !image) return null;
+
+  return (
+    <KonvaImage
+      image={image}
+      x={underlay.origin.x}
+      y={underlay.origin.y}
+      // Pixels map to world millimetres through the trace's scale, so the
+      // image sits exactly where the traced geometry came from.
+      width={image.naturalWidth * underlay.scaleMmPerPx}
+      height={image.naturalHeight * underlay.scaleMmPerPx}
+      rotation={underlay.rotation}
+      opacity={underlay.opacity}
+      listening={false}
+      perfectDrawEnabled={false}
     />
   );
 }

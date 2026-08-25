@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { LibraryItem, UnitSystem, Variant } from '@room/shared';
+import type { Confidence, LibraryItem, ProductDraft, UnitSystem, Variant } from '@room/shared';
 import {
   TAXONOMY,
   createLibraryItem,
@@ -24,6 +24,27 @@ export interface ItemFormProps {
   units: UnitSystem;
   onSave: (item: LibraryItem) => void;
   onClose: () => void;
+  /** An AI lookup result to pre-fill from. Every field stays editable. */
+  draft?: ProductDraft | null;
+  /** Sources the lookup used, shown so a number can be checked. */
+  research?: { text: string; citations: { title: string; url: string }[]; model: string } | null;
+}
+
+const CONFIDENCE_LABEL: Record<Confidence, string> = {
+  high: 'from the manufacturer or a major retailer',
+  medium: 'from a secondary source, or sources disagreed',
+  low: 'typical for the type, not measured',
+  manual: 'entered by hand',
+};
+
+/** A small confidence chip next to a pre-filled field. */
+function Conf({ level }: { level?: Confidence }) {
+  if (!level || level === 'manual') return null;
+  return (
+    <span className={`conf conf-${level}`} title={CONFIDENCE_LABEL[level]}>
+      {level}
+    </span>
+  );
 }
 
 /**
@@ -33,23 +54,43 @@ export interface ItemFormProps {
  * a lookup fails, and the AI's review card is this same form pre-filled, so
  * there's exactly one place where a product's fields are defined and validated.
  */
-export default function ItemForm({ existing, units, onSave, onClose }: ItemFormProps) {
-  const [name, setName] = useState(existing?.name ?? '');
-  const [brand, setBrand] = useState(existing?.brand ?? '');
-  const [modelNumber, setModelNumber] = useState(existing?.modelNumber ?? '');
-  const [subcategoryId, setSubcategoryId] = useState(existing?.subcategoryId ?? 'sofa');
-  const [w, setW] = useState(existing?.w ?? Math.round(84 * MM_PER_INCH));
-  const [d, setD] = useState(existing?.d ?? Math.round(38 * MM_PER_INCH));
-  const [h, setH] = useState(existing?.h ?? Math.round(34 * MM_PER_INCH));
-  const [price, setPrice] = useState(existing?.price != null ? String(existing.price) : '');
-  const [sourceUrl, setSourceUrl] = useState(existing?.sourceUrl ?? '');
+export default function ItemForm({
+  existing,
+  units,
+  onSave,
+  onClose,
+  draft,
+  research,
+}: ItemFormProps) {
+  const [name, setName] = useState(existing?.name ?? draft?.name.value ?? '');
+  const [brand, setBrand] = useState(existing?.brand ?? draft?.brand?.value ?? '');
+  const [modelNumber, setModelNumber] = useState(
+    existing?.modelNumber ?? draft?.modelNumber?.value ?? '',
+  );
+  const [subcategoryId, setSubcategoryId] = useState(
+    existing?.subcategoryId ?? draft?.subcategoryId.value ?? 'sofa',
+  );
+  const [w, setW] = useState(existing?.w ?? draft?.w.value ?? Math.round(84 * MM_PER_INCH));
+  const [d, setD] = useState(existing?.d ?? draft?.d.value ?? Math.round(38 * MM_PER_INCH));
+  const [h, setH] = useState(existing?.h ?? draft?.h.value ?? Math.round(34 * MM_PER_INCH));
+  const [price, setPrice] = useState(
+    existing?.price != null
+      ? String(existing.price)
+      : draft?.price?.value != null
+        ? String(draft.price.value)
+        : '',
+  );
+  const [sourceUrl, setSourceUrl] = useState(existing?.sourceUrl ?? draft?.sourceUrl ?? '');
   const [notes, setNotes] = useState(existing?.notes ?? '');
   const [variants, setVariants] = useState<Variant[]>(
     existing?.variants.length
       ? existing.variants
-      : [{ id: newId('var'), label: 'Default', hex: SWATCHES[0]! }],
+      : draft?.variants.length
+        ? draft.variants
+        : [{ id: newId('var'), label: 'Default', hex: SWATCHES[0]! }],
   );
-  const [imageAssetId, setImageAssetId] = useState(existing?.imageAssetId);
+  const [imageAssetId, setImageAssetId] = useState(existing?.imageAssetId ?? draft?.imageAssetId);
+  const [showNotes, setShowNotes] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
 
@@ -96,6 +137,12 @@ export default function ItemForm({ existing, units, onSave, onClose }: ItemFormP
 
     const item: LibraryItem = {
       ...base,
+      // A confirmed lookup keeps its provenance so a suspicious dimension can
+      // be traced back later; anything typed by hand is marked as such.
+      confidence: draft ? draft.w.confidence : 'manual',
+      provenance: draft
+        ? draft.provenance
+        : { method: 'manual', citations: [], capturedAt: new Date().toISOString() },
       name: name.trim(),
       brand: brand.trim() || undefined,
       modelNumber: modelNumber.trim() || undefined,
@@ -129,10 +176,60 @@ export default function ItemForm({ existing, units, onSave, onClose }: ItemFormP
   return (
     <div className="dialog-backdrop" onMouseDown={onClose}>
       <div className="dialog wide" onMouseDown={(e) => e.stopPropagation()}>
-        <h3>{existing ? 'Edit item' : 'Add item manually'}</h3>
+        <h3>{existing ? 'Edit item' : draft ? 'Confirm before adding' : 'Add item manually'}</h3>
+
+        {draft && (
+          <div className="review-head">
+            <p className="hint" style={{ margin: '0 0 8px' }}>
+              Nothing is saved until you press Add. Every field below is editable —
+              correct anything that looks wrong.
+            </p>
+
+            {draft.warnings.length > 0 && (
+              <div className="banner warn">
+                <ul className="warn-list">
+                  {draft.warnings.map((warning, i) => (
+                    <li key={i}>{warning}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {draft.w.citedText && (
+              <p className="hint" style={{ margin: '0 0 8px' }}>
+                Source stated: <b>{draft.w.citedText}</b>
+              </p>
+            )}
+
+            {research && research.citations.length > 0 && (
+              <p className="hint" style={{ margin: '0 0 4px' }}>
+                Sources:{' '}
+                {research.citations.map((c, i) => (
+                  <span key={c.url}>
+                    {i > 0 && ', '}
+                    <a href={c.url} target="_blank" rel="noreferrer noopener">
+                      {c.title}
+                    </a>
+                  </span>
+                ))}
+              </p>
+            )}
+
+            {research && (
+              <>
+                <button className="linky" type="button" onClick={() => setShowNotes((v) => !v)}>
+                  {showNotes ? 'Hide' : 'Show'} what the model read
+                </button>
+                {showNotes && <pre className="research-notes">{research.text}</pre>}
+              </>
+            )}
+          </div>
+        )}
 
         <div className="field-row">
-          <label>Name *</label>
+          <label>
+            Name * <Conf level={draft?.name.confidence} />
+          </label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -177,7 +274,9 @@ export default function ItemForm({ existing, units, onSave, onClose }: ItemFormP
 
         <div className="dims-row">
           <div>
-            <label>Width</label>
+            <label>
+              Width <Conf level={draft?.w.confidence} />
+            </label>
             <LengthInput value={w} units={units} onCommit={setW} aria-label="Width" />
           </div>
           <div>

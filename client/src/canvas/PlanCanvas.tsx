@@ -15,6 +15,7 @@ import { snapPoint, nearestWall, type SnapResult } from './snapping.js';
 import ItemLayer from './ItemLayer.js';
 import {
   GridLayer,
+  UnderlayLayer,
   FloorLayer,
   WallLayer,
   VertexLayer,
@@ -319,6 +320,7 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
       >
         <Layer listening={false}>
           {settings.showGrid && <GridLayer vp={vp} step={settings.gridStep} />}
+          <UnderlayLayer room={room} />
           <FloorLayer room={room} />
         </Layer>
 

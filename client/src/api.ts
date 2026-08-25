@@ -1,4 +1,10 @@
-import type { LibraryItem, Project, ProjectSummary } from '@room/shared';
+import type {
+  FloorplanTraceResult,
+  LibraryItem,
+  ProductDraft,
+  Project,
+  ProjectSummary,
+} from '@room/shared';
 
 /** Everything goes through the Vite proxy, so paths are same-origin. */
 const BASE = '/api';
@@ -32,6 +38,23 @@ export interface Health {
   aiProvider: 'gemini' | 'anthropic' | null;
 }
 
+export type IngestProductInput =
+  | { method: 'url'; url: string }
+  | { method: 'model'; modelNumber: string }
+  | { method: 'query'; query: string }
+  | { method: 'photo'; imageBase64: string; mimeType: string; hint?: string };
+
+export interface ResearchNotes {
+  text: string;
+  citations: { title: string; url: string }[];
+  model: string;
+}
+
+export interface IngestProductResult {
+  draft: ProductDraft;
+  research: ResearchNotes;
+}
+
 export const api = {
   health: () => request<Health>('/health'),
 
@@ -53,6 +76,22 @@ export const api = {
     }),
   deleteLibraryItem: (id: string) =>
     request<{ deleted: boolean }>(`/library/${id}`, { method: 'DELETE' }),
+
+  ingestProduct: (input: IngestProductInput) =>
+    request<IngestProductResult>('/ingest/product', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+
+  /**
+   * Trace a floor plan. The image's natural pixel size is required: the prompt
+   * states it, and the returned coordinates are in that space.
+   */
+  ingestFloorplan2: (imageBase64: string, mimeType: string, width: number, height: number) =>
+    request<FloorplanTraceResult>('/ingest/floorplan', {
+      method: 'POST',
+      body: JSON.stringify({ imageBase64, mimeType, width, height }),
+    }),
 
   uploadImage: (dataBase64: string) =>
     request<{ assetId: string; bytes: number }>('/assets/upload', {

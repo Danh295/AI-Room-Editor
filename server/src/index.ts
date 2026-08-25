@@ -1,9 +1,22 @@
-import 'dotenv/config';
+import path from 'node:path';
+import { config as loadEnv } from 'dotenv';
 import express from 'express';
 import cors from 'cors';
-import { ensureDataDirs, DATA_DIR } from './paths.js';
+import { ensureDataDirs, DATA_DIR, REPO_ROOT } from './paths.js';
 import { storeRouter } from './routes/store.js';
 import { assetsRouter } from './routes/assets.js';
+import { ingestRouter } from './routes/ingest.js';
+
+/*
+  Point dotenv at the repo root explicitly.
+
+  `import 'dotenv/config'` resolves .env relative to cwd, and the dev script
+  runs this with cwd set to server/ -- so it silently looked for server/.env and
+  found nothing. The failure mode is nasty: no error, just an app that behaves
+  as though you never configured a key. REPO_ROOT is derived from this module's
+  location, so it holds however the server is launched.
+*/
+loadEnv({ path: path.join(REPO_ROOT, '.env') });
 
 const PORT = Number(process.env.PORT ?? 8787);
 
@@ -40,6 +53,7 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api', storeRouter);
 app.use('/api/assets', assetsRouter);
+app.use('/api/ingest', ingestRouter);
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'no such endpoint' });

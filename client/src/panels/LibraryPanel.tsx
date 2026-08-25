@@ -4,6 +4,7 @@ import { TAXONOMY, formatLength, findSubcategory } from '@room/shared';
 import { useEditor } from '../store/editorStore.js';
 import { assetUrl } from '../api.js';
 import ItemForm from './ItemForm.js';
+import IngestDialog from './IngestDialog.js';
 
 /** Case-insensitive match across the fields someone would actually search by. */
 function matches(item: LibraryItem, query: string): boolean {
@@ -28,6 +29,7 @@ export default function LibraryPanel() {
   const [query, setQuery] = useState('');
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
   const [formFor, setFormFor] = useState<LibraryItem | null | undefined>(undefined);
+  const [lookupOpen, setLookupOpen] = useState(false);
 
   const units = project?.settings.units ?? 'imperial';
 
@@ -66,9 +68,14 @@ export default function LibraryPanel() {
     <>
       <div className="library-head">
         <h2>Library</h2>
-        <button className="linky" onClick={() => setFormFor(null)}>
-          + Add
-        </button>
+        <span className="head-actions">
+          <button className="linky" onClick={() => setLookupOpen(true)} title="Find a product by link, model number, or photo">
+            AI lookup
+          </button>
+          <button className="linky" onClick={() => setFormFor(null)} title="Enter a product by hand">
+            + Add
+          </button>
+        </span>
       </div>
 
       <input
@@ -81,8 +88,9 @@ export default function LibraryPanel() {
 
       {library.length === 0 && (
         <p className="hint">
-          Nothing here yet. <b>+ Add</b> enters a piece by hand — name, category, and
-          W×D×H is enough. AI lookup from a URL or photo arrives in the next phase.
+          Nothing here yet. <b>AI lookup</b> finds a product from a link, model
+          number, or photo and shows you the specs to confirm. <b>+ Add</b> enters
+          one by hand.
         </p>
       )}
 
@@ -168,6 +176,14 @@ export default function LibraryPanel() {
           </div>
         );
       })}
+
+      {lookupOpen && (
+        <IngestDialog
+          units={units}
+          onSave={(item) => void saveLibraryItem(item)}
+          onClose={() => setLookupOpen(false)}
+        />
+      )}
 
       {formFor !== undefined && (
         <ItemForm

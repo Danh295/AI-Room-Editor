@@ -658,3 +658,97 @@ button.linky:hover:not(:disabled) {
   border: 1px solid #2a6647;
   color: #8fe3bd;
 }
+
+/* --------------------------------------------------------- ingest / review */
+
+.head-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.mode-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 2px;
+  margin-bottom: 10px;
+}
+
+.mode-tabs button {
+  flex: 1;
+  font-size: 12px;
+}
+
+.review-head {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.warn-list {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.warn-list li + li {
+  margin-top: 4px;
+}
+
+.research-notes {
+  max-height: 190px;
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre-wrap;
+  color: var(--muted);
+  margin: 6px 0 0;
+}
+
+.conf {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+.conf-high {
+  background: #14301f;
+  color: #8fe3bd;
+}
+
+.conf-medium {
+  background: #3a2f14;
+  color: #f0d69a;
+}
+
+.conf-low {
+  background: #3a1c1c;
+  color: #f3b0b0;
+}
+
+a {
+  color: var(--accent);
+}
+
+.plan-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.plan-preview img {
+  max-width: 160px;
+  max-height: 120px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+}
