@@ -1,0 +1,24 @@
+{
+  "name": "@room/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local API: Claude proxy, image cache, and project storage",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.3.0",
+    "tsx": "^4.23.12"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "sharp": "^0.35.3"
+  }
+}
