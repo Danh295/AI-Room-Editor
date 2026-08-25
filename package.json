@@ -1,0 +1,28 @@
+{
+  "name": "ai-room-editor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local room and furniture planner with AI-assisted floor plan tracing and product ingestion",
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "npm run dev --workspace server",
+    "dev:client": "npm run dev --workspace client",
+    "build": "npm run build --workspace client",
+    "test": "npm run test --workspace shared",
+    "typecheck": "tsc --build --force"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  }
+}
