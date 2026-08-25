@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
-import type { LibraryItem, Project, ProjectSettings, Pt } from '@room/shared';
+import type { LibraryItem, PlacedItem, Project, ProjectSettings, Pt } from '@room/shared';
 import { createProject, appendWall, startChain, closeChain, placeItem } from '@room/shared';
 import { api } from '../api.js';
 
@@ -91,6 +91,13 @@ export interface EditorState {
   /** Place a library item into the current room; returns the placement id. */
   placeInRoom: (libraryId: string, x: number, y: number) => string | null;
   removePlacement: (placementId: string) => void;
+  /** Patch one placement. Use inside a gesture for drags. */
+  updatePlacement: (placementId: string, patch: Partial<PlacedItem>) => void;
+  /** Nudge every selected, unlocked item. */
+  nudgeSelection: (dx: number, dy: number) => void;
+  /** Rotate selected items by a delta, wrapped into [0,360). */
+  rotateSelection: (deltaDeg: number) => void;
+  deleteSelection: () => void;
 
   // --- tools and wall drawing
   setTool: (tool: Tool) => void;
@@ -308,6 +315,48 @@ export const useEditor = create<EditorState>((set, get) => {
       });
       set({ selection: [placement.id] });
       return placement.id;
+    },
+
+    updatePlacement(placementId, patch) {
+      get().edit((d) => {
+        const target = d.items.find((i) => i.id === placementId);
+        if (!target || target.locked) return;
+        Object.assign(target, patch);
+      });
+    },
+
+    nudgeSelection(dx, dy) {
+      const { selection } = get();
+      if (selection.length === 0) return;
+      get().edit((d) => {
+        for (const item of d.items) {
+          if (!selection.includes(item.id) || item.locked) continue;
+          item.x = Math.round(item.x + dx);
+          item.y = Math.round(item.y + dy);
+        }
+      });
+    },
+
+    rotateSelection(deltaDeg) {
+      const { selection } = get();
+      if (selection.length === 0) return;
+      get().edit((d) => {
+        for (const item of d.items) {
+          if (!selection.includes(item.id) || item.locked) continue;
+          item.rotation = ((item.rotation + deltaDeg) % 360 + 360) % 360;
+        }
+      });
+    },
+
+    deleteSelection() {
+      const { selection } = get();
+      if (selection.length === 0) return;
+      get().edit((d) => {
+        // Locked pieces are deliberately pinned; deleting them from under a
+        // stray keypress would be worse than ignoring the keypress.
+        d.items = d.items.filter((i) => !selection.includes(i.id) || i.locked);
+      });
+      set({ selection: [] });
     },
 
     removePlacement(placementId) {

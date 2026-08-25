@@ -7,12 +7,17 @@ import {
   moveVertex,
   roomPolygon,
   addOpeningNearPoint,
+  findConflicts,
+  snapToWall,
+  snapToItems,
   MM_PER_INCH,
 } from '@room/shared';
 import { useEditor } from '../store/editorStore.js';
 import { useViewport, toWorld, mmPerPixel } from './viewport.js';
 import { snapPoint, nearestWall, type SnapResult } from './snapping.js';
 import ItemLayer from './ItemLayer.js';
+import ConflictLayer from './ConflictLayer.js';
+import { useConflictStore } from './conflictStore.js';
 import {
   GridLayer,
   UnderlayLayer,
@@ -57,6 +62,7 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
   const draftHover = useEditor((s) => s.draftHover);
   const draftFinish = useEditor((s) => s.draftFinish);
   const setTool = useEditor((s) => s.setTool);
+  const updatePlacement = useEditor((s) => s.updatePlacement);
 
   const vp = useViewport();
   const [snap, setSnap] = useState<SnapResult | null>(null);
@@ -96,6 +102,24 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
   }, []);
 
   const toleranceMm = useMemo(() => SNAP_PX * mmPerPixel(vp.scale), [vp.scale]);
+
+  const libraryById = useMemo(() => new Map(library.map((i) => [i.id, i])), [library]);
+
+  /*
+    Recomputed whenever the items or the room change, which includes every frame
+    of a drag. It's O(n^2) over placements, but each test is a handful of
+    polygon comparisons on shapes with at most eight vertices — cheap enough
+    that live feedback while dragging is worth more than the saved cycles.
+  */
+  const conflicts = useMemo(
+    () => (room && project ? findConflicts(project.items, libraryById, room) : []),
+    [project?.items, room, libraryById],
+  );
+
+  // Published so the status bar can report the tally without recomputing it.
+  useEffect(() => {
+    useConflictStore.getState().set(conflicts);
+  }, [conflicts]);
 
   /** Pointer position in world millimeters, with snapping applied. */
   const resolvePointer = useCallback((): { raw: Pt; snapped: SnapResult } | null => {
@@ -220,15 +244,52 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
       if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
 
       const state = useEditor.getState();
+
       if (e.key === 'Escape') {
         if (state.draft) state.draftCancel();
         else state.setTool('select');
-      } else if (e.key === 'Enter' && state.draft) {
+        return;
+      }
+      if (e.key === 'Enter' && state.draft) {
         e.preventDefault();
         state.draftFinish(false);
-      } else if ((e.key === 'Backspace' || e.key === 'Delete') && state.draft) {
+        return;
+      }
+      if ((e.key === 'Backspace' || e.key === 'Delete') && state.draft) {
         e.preventDefault();
         state.draftUndoPoint();
+        return;
+      }
+
+      // Nothing below applies while a wall chain is in progress.
+      if (state.draft || state.selection.length === 0) return;
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        state.deleteSelection();
+        return;
+      }
+
+      // Rotate in 15-degree steps, matching the drag handle.
+      if (e.key === '[' || e.key === ']') {
+        e.preventDefault();
+        state.rotateSelection(e.key === ']' ? 15 : -15);
+        return;
+      }
+
+      const nudges: Record<string, [number, number]> = {
+        ArrowLeft: [-1, 0],
+        ArrowRight: [1, 0],
+        ArrowUp: [0, -1],
+        ArrowDown: [0, 1],
+      };
+      const direction = nudges[e.key];
+      if (direction) {
+        e.preventDefault();
+        // An inch at a time, or six inches with shift — the two distances you
+        // actually want when easing furniture into place.
+        const stepMm = e.shiftKey ? Math.round(6 * MM_PER_INCH) : Math.round(MM_PER_INCH);
+        state.nudgeSelection(direction[0] * stepMm, direction[1] * stepMm);
       }
     }
     window.addEventListener('keydown', onKey);
@@ -250,6 +311,51 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
       });
     },
     [room, settings, edit, toleranceMm],
+  );
+
+  /**
+   * Drag an item, snapping it to walls first and neighbours second.
+   *
+   * Wall wins because pushing furniture against a wall is the commonest
+   * intent and it also sets the rotation; item-to-item snapping only nudges
+   * position, so applying it afterwards can't undo the wall alignment.
+   */
+  const handleItemDragMove = useCallback(
+    (id: string, x: number, y: number) => {
+      if (!room || !settings || !project) return;
+
+      const placed = project.items.find((i) => i.id === id);
+      const item = placed ? libraryById.get(placed.libraryId) : undefined;
+      if (!placed || !item) return;
+
+      let next = { x: Math.round(x), y: Math.round(y), rotation: placed.rotation };
+
+      if (settings.snapToWalls) {
+        const wallSnap = snapToWall({ ...placed, ...next }, item, room, toleranceMm * 2);
+        if (wallSnap) {
+          next = { x: wallSnap.x, y: wallSnap.y, rotation: wallSnap.rotation };
+        } else {
+          const others = project.items
+            .filter((o) => o.id !== id)
+            .map((o) => ({ placed: o, item: libraryById.get(o.libraryId) }))
+            .filter((o): o is { placed: typeof placed; item: typeof item } => Boolean(o.item));
+          const itemSnap = snapToItems({ ...placed, ...next }, item, others, toleranceMm * 1.5);
+          if (itemSnap) next = { ...next, ...itemSnap };
+        }
+      }
+
+      if (settings.snapToGrid && settings.gridStep > 0) {
+        const step = settings.gridStep;
+        // Only re-grid when nothing stronger already claimed the position.
+        if (next.rotation === placed.rotation) {
+          next.x = Math.round(next.x / step) * step;
+          next.y = Math.round(next.y / step) * step;
+        }
+      }
+
+      updatePlacement(id, next);
+    },
+    [room, settings, project, libraryById, toleranceMm, updatePlacement],
   );
 
   const willClose = useMemo(() => {
@@ -346,6 +452,19 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
             units={settings.units}
             renderMode={settings.itemRender}
             onSelect={(id, additive) => toggleSelect(id, additive)}
+            onDragStart={(id) => {
+              beginGesture();
+              if (!selection.includes(id)) select([id]);
+            }}
+            onDragMove={handleItemDragMove}
+            onDragEnd={endGesture}
+            onRotateStart={beginGesture}
+            onRotate={(id, degrees) => {
+              // Shift frees the angle; otherwise land on tidy 15-degree steps.
+              const snapped = shiftHeld ? degrees : Math.round(degrees / 15) * 15;
+              updatePlacement(id, { rotation: ((snapped % 360) + 360) % 360 });
+            }}
+            onRotateEnd={endGesture}
           />
           {tool === 'select' && (
             <VertexLayer
@@ -360,6 +479,16 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
         </Layer>
 
         <Layer listening={false}>
+          <ConflictLayer
+            items={project.items}
+            library={libraryById}
+            room={room}
+            conflicts={conflicts}
+            selection={selection}
+            showClearances={settings.showClearances}
+            vp={vp}
+            units={settings.units}
+          />
           {settings.showDimensions && (
             <DimensionLayer room={room} vp={vp} units={settings.units} />
           )}

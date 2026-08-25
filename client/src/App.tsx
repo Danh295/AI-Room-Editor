@@ -4,6 +4,7 @@ import { formatLength } from '@room/shared';
 import { api, type Health } from './api.js';
 import { useEditor, rememberProject, recallProject, type Tool } from './store/editorStore.js';
 import { useViewport } from './canvas/viewport.js';
+import { useConflictStore, summarize } from './canvas/conflictStore.js';
 import PlanCanvas from './canvas/PlanCanvas.js';
 import RoomPanel from './panels/RoomPanel.js';
 import LibraryPanel from './panels/LibraryPanel.js';
@@ -42,6 +43,8 @@ export default function App() {
   const setTool = useEditor((s) => s.setTool);
   const select = useEditor((s) => s.select);
   const scale = useViewport((s) => s.scale);
+  const conflicts = useConflictStore((s) => s.conflicts);
+  const nextConflict = useConflictStore((s) => s.next);
 
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [health, setHealth] = useState<Health | null>(null);
@@ -241,6 +244,26 @@ export default function App() {
             <span>Units: {units === 'imperial' ? 'ft-in' : 'metric'}</span>
             <span>Grid: {formatLength(project.settings.gridStep, units)}</span>
             <span>Zoom: {Math.round(scale * 1000) / 10}%</span>
+
+            <button
+              className={conflicts.length ? 'conflict-chip bad' : 'conflict-chip'}
+              disabled={conflicts.length === 0}
+              title={
+                conflicts.length
+                  ? 'Click to step through each problem'
+                  : 'Nothing overlaps and every clearance is satisfied'
+              }
+              onClick={() => {
+                const conflict = nextConflict();
+                // Selecting the pieces involved is what makes the tally
+                // actionable — otherwise you're told there's a problem and left
+                // to hunt for it.
+                if (conflict) select(conflict.itemIds);
+              }}
+            >
+              {summarize(conflicts)}
+            </button>
+
             <span className="spacer" />
             <span>{past.length} undo steps</span>
           </>

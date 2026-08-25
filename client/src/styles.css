@@ -752,3 +752,27 @@ a {
   border-radius: var(--radius);
   background: #fff;
 }
+
+.conflict-chip {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 1px 8px;
+  font-size: 11.5px;
+  color: var(--muted);
+  border-radius: 10px;
+}
+
+.conflict-chip:disabled {
+  opacity: 1;
+  color: var(--ok);
+}
+
+.conflict-chip.bad {
+  color: #f3b0b0;
+  background: #3a1c1c;
+  border-color: #6b2b2b;
+}
+
+.conflict-chip.bad:hover {
+  background: #4a2323;
+}

@@ -175,9 +175,29 @@ interface ItemProps {
   units: UnitSystem;
   renderMode: ItemRenderMode;
   onSelect: (id: string, additive: boolean) => void;
+  onDragStart: (id: string) => void;
+  onDragMove: (id: string, x: number, y: number) => void;
+  onDragEnd: () => void;
+  onRotateStart: () => void;
+  onRotate: (id: string, degrees: number) => void;
+  onRotateEnd: () => void;
 }
 
-function PlacedFurniture({ placed, item, selected, vp, units, renderMode, onSelect }: ItemProps) {
+function PlacedFurniture({
+  placed,
+  item,
+  selected,
+  vp,
+  units,
+  renderMode,
+  onSelect,
+  onDragStart,
+  onDragMove,
+  onDragEnd,
+  onRotateStart,
+  onRotate,
+  onRotateEnd,
+}: ItemProps) {
   const inv = 1 / vp.scale;
   const image = useAssetImage(
     renderMode !== 'icon'
@@ -242,8 +262,14 @@ function PlacedFurniture({ placed, item, selected, vp, units, renderMode, onSele
       rotation={placed.rotation}
       scaleX={placed.flipX ? -1 : 1}
       opacity={placed.locked ? 0.75 : 1}
+      // A locked item stays selectable but refuses to move, which is the whole
+      // point of locking it.
+      draggable={!placed.locked}
       onClick={(e) => onSelect(placed.id, e.evt.shiftKey)}
       onTap={(e) => onSelect(placed.id, (e.evt as unknown as MouseEvent).shiftKey)}
+      onDragStart={() => onDragStart(placed.id)}
+      onDragMove={(e) => onDragMove(placed.id, e.target.x(), e.target.y())}
+      onDragEnd={onDragEnd}
     >
       <Line
         points={outline.flatMap((p) => [p.x, p.y])}
@@ -281,6 +307,52 @@ function PlacedFurniture({ placed, item, selected, vp, units, renderMode, onSele
           />
         ))}
 
+      {selected && !placed.locked && (
+        <Group>
+          {/* Stem and knob standing off the front, so which way it faces is
+              never ambiguous once rotated. */}
+          <Line
+            points={[0, -d / 2, 0, -d / 2 - 34 * inv]}
+            stroke={SELECTED}
+            strokeWidth={1.4 * inv}
+            listening={false}
+            perfectDrawEnabled={false}
+          />
+          <Circle
+            x={0}
+            y={-d / 2 - 34 * inv}
+            radius={6 * inv}
+            fill="#11141a"
+            stroke={SELECTED}
+            strokeWidth={2 * inv}
+            hitStrokeWidth={18 * inv}
+            draggable
+            onDragStart={(e) => {
+              e.cancelBubble = true;
+              onRotateStart();
+            }}
+            onDragMove={(e) => {
+              e.cancelBubble = true;
+              // Angle from the item's centre to the pointer, in world space.
+              const stage = e.target.getStage();
+              const pointer = stage?.getRelativePointerPosition();
+              if (!pointer) return;
+              const deg =
+                (Math.atan2(pointer.y - placed.y, pointer.x - placed.x) * 180) / Math.PI;
+              // The handle sits on the front (-Y), which is -90 degrees from +X.
+              onRotate(placed.id, deg + 90);
+              // Snap the knob back to its stem; rotation moves the whole group.
+              e.target.position({ x: 0, y: -d / 2 - 34 * inv });
+            }}
+            onDragEnd={(e) => {
+              e.cancelBubble = true;
+              e.target.position({ x: 0, y: -d / 2 - 34 * inv });
+              onRotateEnd();
+            }}
+          />
+        </Group>
+      )}
+
       {placed.locked && (
         <Circle x={0} y={0} radius={5 * inv} fill="#0d0f13" stroke="#949aa6" strokeWidth={1 * inv} />
       )}
@@ -314,6 +386,12 @@ export interface ItemLayerProps {
   units: UnitSystem;
   renderMode: ItemRenderMode;
   onSelect: (id: string, additive: boolean) => void;
+  onDragStart: (id: string) => void;
+  onDragMove: (id: string, x: number, y: number) => void;
+  onDragEnd: () => void;
+  onRotateStart: () => void;
+  onRotate: (id: string, degrees: number) => void;
+  onRotateEnd: () => void;
 }
 
 const LAYER_RANK: Record<string, number> = {
@@ -332,6 +410,12 @@ export default function ItemLayer({
   units,
   renderMode,
   onSelect,
+  onDragStart,
+  onDragMove,
+  onDragEnd,
+  onRotateStart,
+  onRotate,
+  onRotateEnd,
 }: ItemLayerProps) {
   const byId = useMemo(() => new Map(library.map((i) => [i.id, i])), [library]);
 
@@ -354,6 +438,12 @@ export default function ItemLayer({
           units={units}
           renderMode={renderMode}
           onSelect={onSelect}
+          onDragStart={onDragStart}
+          onDragMove={onDragMove}
+          onDragEnd={onDragEnd}
+          onRotateStart={onRotateStart}
+          onRotate={onRotate}
+          onRotateEnd={onRotateEnd}
         />
       ))}
     </Group>
