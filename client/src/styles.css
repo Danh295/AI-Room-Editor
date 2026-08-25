@@ -255,3 +255,173 @@ select:focus {
   border-radius: 4px;
   padding: 1px 5px;
 }
+
+/* ------------------------------------------------------------------ canvas */
+
+/*
+  .stage stays a centering grid (see layout above) so the empty state sits in
+  the middle. The canvas host is absolutely positioned, so it's out of flow and
+  fills the stage regardless.
+*/
+.canvas-host {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.canvas-hint,
+.canvas-empty {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(27, 30, 36, 0.94);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 7px 12px;
+  font-size: 12px;
+  color: var(--muted);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.canvas-hint {
+  bottom: 14px;
+}
+
+.canvas-empty {
+  top: 18px;
+  color: var(--text);
+}
+
+.canvas-hint b,
+.canvas-empty b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------- tools */
+
+.toolgroup {
+  display: flex;
+  gap: 2px;
+  margin-left: 6px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 2px;
+}
+
+button.tool {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 4px 11px;
+}
+
+button.tool.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+button.danger {
+  border-color: #6b2b2b;
+  color: var(--danger);
+}
+
+button.danger:hover:not(:disabled) {
+  background: #3a1c1c;
+}
+
+/* ------------------------------------------------------------------ fields */
+
+.field-row {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+.field-row label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.field-row input,
+.field-row select {
+  width: 100%;
+}
+
+.length-input.invalid {
+  border-color: var(--danger);
+  background: #2a1616;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 6px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.check-row input {
+  accent-color: var(--accent);
+}
+
+.button-row {
+  display: flex;
+  gap: 6px;
+  margin: 10px 0 14px;
+  flex-wrap: wrap;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 10px;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+
+.stat-grid span {
+  color: var(--muted);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/* ----------------------------------------------------------------- dialogs */
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: grid;
+  place-items: center;
+  z-index: 50;
+}
+
+.dialog {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px;
+  width: 340px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
+}
+
+.dialog h3 {
+  margin: 0 0 14px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}

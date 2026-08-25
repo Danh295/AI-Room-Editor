@@ -1,8 +1,35 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
-import type { LibraryItem, Project, ProjectSettings } from '@room/shared';
-import { createProject } from '@room/shared';
+import type { LibraryItem, Project, ProjectSettings, Pt } from '@room/shared';
+import { createProject, appendWall, startChain, closeChain } from '@room/shared';
 import { api } from '../api.js';
+
+/** Which pointer gesture the canvas is currently interpreting. */
+export type Tool = 'select' | 'wall' | 'door' | 'window';
+
+/**
+ * A wall chain being drawn, held outside the project on purpose.
+ *
+ * Committing each click straight into the room would put a half-drawn outline
+ * in the saved file and leave one undo entry per click. Instead the chain lives
+ * here until it's finished, then lands in the project as a single edit.
+ */
+export interface DraftChain {
+  points: Pt[];
+  /** Live cursor position for the rubber-band segment; null when off-canvas. */
+  hover: Pt | null;
+}
+
+/** Ids are prefixed at creation, so what a selection refers to is readable. */
+export type SelectionKind = 'wall' | 'vertex' | 'opening' | 'item' | 'unknown';
+
+export function idKind(id: string): SelectionKind {
+  if (id.startsWith('w_')) return 'wall';
+  if (id.startsWith('v_')) return 'vertex';
+  if (id.startsWith('op_')) return 'opening';
+  if (id.startsWith('pl_')) return 'item';
+  return 'unknown';
+}
 
 /**
  * Undo history is snapshot-based rather than patch-based.
@@ -27,6 +54,8 @@ export interface EditorState {
   gestureBase: Project | null;
 
   selection: string[];
+  tool: Tool;
+  draft: DraftChain | null;
   saveState: SaveState;
   saveError: string | null;
   loading: boolean;
@@ -55,6 +84,16 @@ export interface EditorState {
   canRedo: () => boolean;
 
   updateSettings: (patch: Partial<ProjectSettings>) => void;
+
+  // --- tools and wall drawing
+  setTool: (tool: Tool) => void;
+  draftStart: (point: Pt) => void;
+  draftAdd: (point: Pt) => void;
+  draftHover: (point: Pt | null) => void;
+  draftUndoPoint: () => void;
+  /** Commit the chain to the room as one undoable edit. `close` joins the ends. */
+  draftFinish: (close: boolean) => void;
+  draftCancel: () => void;
 
   // --- selection
   select: (ids: string[]) => void;
@@ -100,6 +139,8 @@ export const useEditor = create<EditorState>((set, get) => {
     future: [],
     gestureBase: null,
     selection: [],
+    tool: 'select',
+    draft: null,
     saveState: 'idle',
     saveError: null,
     loading: false,
@@ -214,6 +255,75 @@ export const useEditor = create<EditorState>((set, get) => {
       get().edit((draft) => {
         Object.assign(draft.settings, patch);
       });
+    },
+
+    setTool(tool) {
+      // Switching away mid-chain would strand the draft with no way to finish
+      // or discard it, so drop it.
+      set({ tool, draft: null, selection: [] });
+    },
+
+    draftStart(point) {
+      set({ draft: { points: [point], hover: point } });
+    },
+
+    draftAdd(point) {
+      const { draft } = get();
+      if (!draft) {
+        set({ draft: { points: [point], hover: point } });
+        return;
+      }
+      const last = draft.points[draft.points.length - 1];
+      // Ignore a repeat click on the same spot; it would create a zero-length
+      // wall that renders as nothing and can never be selected to delete.
+      if (last && last.x === point.x && last.y === point.y) return;
+      set({ draft: { points: [...draft.points, point], hover: point } });
+    },
+
+    draftHover(point) {
+      const { draft } = get();
+      if (!draft) return;
+      set({ draft: { ...draft, hover: point } });
+    },
+
+    draftUndoPoint() {
+      const { draft } = get();
+      if (!draft) return;
+      const points = draft.points.slice(0, -1);
+      set({ draft: points.length === 0 ? null : { ...draft, points } });
+    },
+
+    draftFinish(close) {
+      const { draft, project } = get();
+      if (!draft || !project) {
+        set({ draft: null });
+        return;
+      }
+
+      const points = draft.points;
+      // A single point isn't a wall. Discard rather than leaving a stray vertex.
+      if (points.length < 2) {
+        set({ draft: null });
+        return;
+      }
+
+      const thickness = project.settings.defaultWallThickness;
+      get().edit((d) => {
+        let previous = startChain(d.room, points[0]!);
+        const firstId = previous;
+        for (let i = 1; i < points.length; i += 1) {
+          previous = appendWall(d.room, previous, points[i]!, thickness);
+        }
+        if (close && points.length >= 3) {
+          closeChain(d.room, previous, firstId, thickness);
+        }
+      });
+
+      set({ draft: null });
+    },
+
+    draftCancel() {
+      set({ draft: null });
     },
 
     select(ids) {
