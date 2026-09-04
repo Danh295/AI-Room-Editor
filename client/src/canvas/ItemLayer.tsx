@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Group, Line, Rect, Text, Circle, Arc, Image as KonvaImage } from 'react-konva';
-import type { Footprint, ItemRenderMode, LibraryItem, PlacedItem, Pt } from '@room/shared';
-import { effectiveSize, formatLength } from '@room/shared';
+import type { ItemRenderMode, LibraryItem, PlacedItem } from '@room/shared';
+import { LAYER_ORDER, effectiveSize, formatLength, localFootprint } from '@room/shared';
 import type { UnitSystem } from '@room/shared';
 import { assetUrl } from '../api.js';
 import { glyphFor, type Stroke } from './furnitureIcons.js';
@@ -9,67 +9,6 @@ import type { ViewportState } from './viewport.js';
 
 const SELECTED = '#5b9dff';
 const MISSING = '#ff6b6b';
-
-/**
- * Outline of a footprint in local space, centred on the origin.
- * Local +Y is toward the back of the item; -Y is the front it faces.
- */
-export function footprintPoints(footprint: Footprint, w: number, d: number): Pt[] {
-  const hw = w / 2;
-  const hd = d / 2;
-
-  if (footprint.kind === 'poly') {
-    // Stored normalized to the bounding box so it survives a resize.
-    return footprint.points.map((p) => ({ x: p.x * w - hw, y: p.y * d - hd }));
-  }
-
-  if (footprint.kind === 'L') {
-    const nw = Math.min(Math.max(footprint.notchW, 0.01), 0.99) * w;
-    const nd = Math.min(Math.max(footprint.notchD, 0.01), 0.99) * d;
-    const corners: Record<string, Pt[]> = {
-      ne: [
-        { x: -hw, y: -hd },
-        { x: hw - nw, y: -hd },
-        { x: hw - nw, y: -hd + nd },
-        { x: hw, y: -hd + nd },
-        { x: hw, y: hd },
-        { x: -hw, y: hd },
-      ],
-      nw: [
-        { x: -hw + nw, y: -hd },
-        { x: hw, y: -hd },
-        { x: hw, y: hd },
-        { x: -hw, y: hd },
-        { x: -hw, y: -hd + nd },
-        { x: -hw + nw, y: -hd + nd },
-      ],
-      se: [
-        { x: -hw, y: -hd },
-        { x: hw, y: -hd },
-        { x: hw, y: hd - nd },
-        { x: hw - nw, y: hd - nd },
-        { x: hw - nw, y: hd },
-        { x: -hw, y: hd },
-      ],
-      sw: [
-        { x: -hw, y: -hd },
-        { x: hw, y: -hd },
-        { x: hw, y: hd },
-        { x: -hw + nw, y: hd },
-        { x: -hw + nw, y: hd - nd },
-        { x: -hw, y: hd - nd },
-      ],
-    };
-    return corners[footprint.corner] ?? corners.ne!;
-  }
-
-  return [
-    { x: -hw, y: -hd },
-    { x: hw, y: -hd },
-    { x: hw, y: hd },
-    { x: -hw, y: hd },
-  ];
-}
 
 /** Render one glyph stroke, mapped from 0..1 space onto the item's box. */
 function GlyphStroke({
@@ -247,8 +186,11 @@ function PlacedFurniture({
 
   const { w, d } = effectiveSize(placed, item);
   const footprint = placed.footprint ?? item.footprint;
-  const outline = footprintPoints(footprint, w, d);
-  const variant = item.variants.find((v) => v.id === placed.variantId);
+  const outline = localFootprint(footprint, w, d);
+  // Fall back to the first variant, so placements saved before `placeItem`
+  // started setting variantId — and any whose variant was later deleted from
+  // the library entry — still render in the item's colour rather than grey.
+  const variant = item.variants.find((v) => v.id === placed.variantId) ?? item.variants[0];
   const fill = variant?.hex ?? '#5a6270';
   const glyph = glyphFor(item.subcategoryId);
 
@@ -394,14 +336,6 @@ export interface ItemLayerProps {
   onRotateEnd: () => void;
 }
 
-const LAYER_RANK: Record<string, number> = {
-  rug: 0,
-  floor: 1,
-  onTop: 2,
-  wall: 3,
-  ceiling: 4,
-};
-
 export default function ItemLayer({
   items,
   library,
@@ -422,7 +356,7 @@ export default function ItemLayer({
   // A rug has to render under the coffee table standing on it, so paint order
   // follows the layer rank rather than insertion order.
   const ordered = useMemo(
-    () => [...items].sort((a, b) => (LAYER_RANK[a.layer] ?? 1) - (LAYER_RANK[b.layer] ?? 1)),
+    () => [...items].sort((a, b) => LAYER_ORDER[a.layer] - LAYER_ORDER[b.layer]),
     [items],
   );
 

@@ -139,6 +139,21 @@ describe('placeItem', () => {
     const p = placeItem(sofa, 10.6, 20.2);
     expect(p).toMatchObject({ rotation: 0, z: 0, locked: false, flipX: false, x: 11, y: 20 });
   });
+
+  it('adopts the first variant, so the chosen colour reaches the plan', () => {
+    const sofa = createLibraryItem({ name: 'S', subcategoryId: 'sofa', w: 1, d: 1, h: 1 });
+    sofa.variants = [
+      { id: 'var_teal', label: 'Teal', hex: '#008080' },
+      { id: 'var_rust', label: 'Rust', hex: '#b7410e' },
+    ];
+    expect(placeItem(sofa, 0, 0).variantId).toBe('var_teal');
+  });
+
+  it('leaves variantId unset when the item has no variants', () => {
+    const sofa = createLibraryItem({ name: 'S', subcategoryId: 'sofa', w: 1, d: 1, h: 1 });
+    expect(sofa.variants).toHaveLength(0);
+    expect(placeItem(sofa, 0, 0).variantId).toBeUndefined();
+  });
 });
 
 describe('effective values', () => {

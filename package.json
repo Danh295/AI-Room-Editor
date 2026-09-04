@@ -15,7 +15,7 @@
     "dev:client": "npm run dev --workspace client",
     "build": "npm run build --workspace client",
     "test": "npm run test --workspace shared",
-    "typecheck": "tsc --build --force"
+    "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "engines": {
     "node": ">=20.19"

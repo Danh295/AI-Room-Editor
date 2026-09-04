@@ -320,7 +320,12 @@ export const useEditor = create<EditorState>((set, get) => {
     updatePlacement(placementId, patch) {
       get().edit((d) => {
         const target = d.items.find((i) => i.id === placementId);
-        if (!target || target.locked) return;
+        if (!target) return;
+        // A locked item refuses every patch except one that changes the lock
+        // itself — otherwise locking would be a one-way door, since the
+        // `{ locked: false }` that clears the flag is exactly what the guard
+        // would drop.
+        if (target.locked && !('locked' in patch)) return;
         Object.assign(target, patch);
       });
     },

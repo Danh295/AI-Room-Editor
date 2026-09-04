@@ -206,6 +206,10 @@ export function placeItem(item: LibraryItem, x: number, y: number): PlacedItem {
     flipX: false,
     locked: false,
     layer: defaultLayer(item.subcategoryId),
+    // Adopt the first variant, or the colour picked when the item was added
+    // never reaches the plan — the renderer looks the placement's variantId up
+    // in the library item and has nothing to match against when it's unset.
+    variantId: item.variants[0]?.id,
     tags: [],
   };
 }
