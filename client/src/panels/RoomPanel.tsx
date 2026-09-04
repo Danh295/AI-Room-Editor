@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ItemRenderMode } from '@room/shared';
 import {
   MM_PER_FOOT,
   formatArea,
@@ -302,6 +303,14 @@ export default function RoomPanel() {
         />
         Snap to grid
       </label>
+      <label className="check-row">
+        <input
+          type="checkbox"
+          checked={settings.snapToWalls}
+          onChange={(e) => updateSettings({ snapToWalls: e.target.checked })}
+        />
+        Snap to walls
+      </label>
       {room.underlay && (
         <label className="check-row">
           <input
@@ -325,6 +334,27 @@ export default function RoomPanel() {
         />
         Show dimensions
       </label>
+      <label className="check-row">
+        <input
+          type="checkbox"
+          checked={settings.showClearances}
+          onChange={(e) => updateSettings({ showClearances: e.target.checked })}
+        />
+        Show clearances
+      </label>
+
+      <div className="field-row">
+        <label>Furniture</label>
+        <select
+          value={settings.itemRender}
+          aria-label="How furniture is drawn"
+          onChange={(e) => updateSettings({ itemRender: e.target.value as ItemRenderMode })}
+        >
+          <option value="icon">Icons</option>
+          <option value="photo">Photos</option>
+          <option value="both">Both</option>
+        </select>
+      </div>
 
       {quickOpen && <QuickRoom onClose={() => setQuickOpen(false)} />}
       {traceOpen && <FloorplanDialog units={units} onClose={() => setTraceOpen(false)} />}

@@ -2,11 +2,12 @@ import { useEffect, useState, useCallback } from 'react';
 import type { ProjectSummary } from '@room/shared';
 import { formatLength } from '@room/shared';
 import { api, type Health } from './api.js';
-import { useEditor, rememberProject, recallProject, type Tool } from './store/editorStore.js';
+import { useEditor, rememberProject, recallProject, idKind, type Tool } from './store/editorStore.js';
 import { useViewport } from './canvas/viewport.js';
 import { useConflictStore, summarize } from './canvas/conflictStore.js';
 import PlanCanvas from './canvas/PlanCanvas.js';
 import RoomPanel from './panels/RoomPanel.js';
+import ItemPanel from './panels/ItemPanel.js';
 import LibraryPanel from './panels/LibraryPanel.js';
 
 const SAVE_LABEL: Record<string, string> = {
@@ -42,6 +43,7 @@ export default function App() {
   const tool = useEditor((s) => s.tool);
   const setTool = useEditor((s) => s.setTool);
   const select = useEditor((s) => s.select);
+  const selection = useEditor((s) => s.selection);
   const scale = useViewport((s) => s.scale);
   const conflicts = useConflictStore((s) => s.conflicts);
   const nextConflict = useConflictStore((s) => s.next);
@@ -230,8 +232,12 @@ export default function App() {
           )}
         </main>
 
+        {/*
+          One aside, two panels. Selecting furniture should answer questions
+          about that piece, not about the room it sits in.
+        */}
         <aside className="panel right">
-          <RoomPanel />
+          {selection.some((id) => idKind(id) === 'item') ? <ItemPanel /> : <RoomPanel />}
         </aside>
       </div>
 
