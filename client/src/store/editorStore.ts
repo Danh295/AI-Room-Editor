@@ -122,11 +122,41 @@ export interface EditorState {
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 const AUTOSAVE_DELAY_MS = 600;
 
+/*
+  A failed save used to be the end of the story: the status bar said "Save
+  failed" and nothing tried again until the next edit. Restart the server mid
+  session and the last few minutes of work lived only in a tab. So failures now
+  back off and retry on their own, and the unload guard below refuses to let the
+  tab close quietly while anything is still unsaved.
+*/
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
+let retryDelayMs = 0;
+const RETRY_BASE_MS = 1_000;
+const RETRY_MAX_MS = 15_000;
+
+function clearTimer(timer: ReturnType<typeof setTimeout> | null): null {
+  if (timer) clearTimeout(timer);
+  return null;
+}
+
 export const useEditor = create<EditorState>((set, get) => {
   function scheduleSave() {
     set({ saveState: 'dirty' });
-    if (saveTimer) clearTimeout(saveTimer);
+    // A fresh edit supersedes whatever the retry was going to send.
+    retryTimer = clearTimer(retryTimer);
+    retryDelayMs = 0;
+    saveTimer = clearTimer(saveTimer);
     saveTimer = setTimeout(() => void get().save(), AUTOSAVE_DELAY_MS);
+  }
+
+  /** Try again after a failure, backing off so a down server isn't hammered. */
+  function scheduleRetry() {
+    retryTimer = clearTimer(retryTimer);
+    retryDelayMs = retryDelayMs === 0 ? RETRY_BASE_MS : Math.min(retryDelayMs * 2, RETRY_MAX_MS);
+    retryTimer = setTimeout(() => {
+      retryTimer = null;
+      void get().save();
+    }, retryDelayMs);
   }
 
   /** Replace the project and mark it dirty, with optional history push. */
@@ -464,21 +494,51 @@ export const useEditor = create<EditorState>((set, get) => {
     async save() {
       const { project } = get();
       if (!project) return;
+
+      // Whatever armed this call, it has now happened.
+      saveTimer = clearTimer(saveTimer);
       set({ saveState: 'saving', saveError: null });
+
       try {
         const saved = await api.saveProject(project);
+        retryDelayMs = 0;
+
         // Only adopt the server's echo if nothing changed while in flight;
         // otherwise we'd clobber edits the user made during the round trip.
+        // Reporting "Saved" in that case would be a lie too — the edit that
+        // landed mid-flight is still only in memory, and the pending autosave
+        // is what will write it.
         if (get().project?.id === saved.id && get().saveState === 'saving') {
-          set({ project: { ...get().project!, updatedAt: saved.updatedAt } });
+          set({
+            project: { ...get().project!, updatedAt: saved.updatedAt },
+            saveState: 'saved',
+          });
         }
-        set({ saveState: 'saved' });
       } catch (err) {
         set({ saveState: 'error', saveError: (err as Error).message });
+        scheduleRetry();
       }
     },
   };
 });
+
+/*
+  Refuse to close quietly with unsaved work.
+
+  Anything other than "saved" means the newest version of the plan exists only
+  in this tab: 'dirty' is waiting on the debounce, 'saving' is in flight and may
+  still fail, and 'error' is actively retrying. The browser shows its own
+  wording; all we control is whether it asks at all.
+*/
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', (event) => {
+    const { project, saveState } = useEditor.getState();
+    if (!project || saveState === 'saved' || saveState === 'idle') return;
+    event.preventDefault();
+    // Older browsers need the assignment rather than preventDefault alone.
+    event.returnValue = '';
+  });
+}
 
 /** Remember the last opened project so a refresh returns to it. */
 const LAST_PROJECT_KEY = 'roomEditor.lastProjectId';

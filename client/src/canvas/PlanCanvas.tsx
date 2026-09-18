@@ -364,11 +364,6 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
     return distance(draft.hover, first) * vp.scale <= CLOSE_PX;
   }, [draft, vp.scale]);
 
-  if (!project || !room || !settings) return null;
-
-  const cursor =
-    tool === 'wall' ? 'crosshair' : tool === 'select' ? 'default' : 'copy';
-
   /** Drop a library item where it was released, snapped to the grid. */
   const handleDrop = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
@@ -394,6 +389,11 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
     },
     [room, settings, toleranceMm],
   );
+
+  if (!project || !room || !settings) return null;
+
+  const cursor =
+    tool === 'wall' ? 'crosshair' : tool === 'select' ? 'default' : 'copy';
 
   return (
     <div
