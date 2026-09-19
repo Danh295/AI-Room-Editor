@@ -1,0 +1,476 @@
+{
+  "items": [
+    {
+      "id": "item_seed_sofa0",
+      "name": "Three-seat sofa",
+      "categoryId": "seating",
+      "subcategoryId": "sofa",
+      "w": 2134,
+      "d": 940,
+      "h": 838,
+      "footprint": {
+        "kind": "rect"
+      },
+      "clearances": {
+        "front": 457,
+        "back": 0,
+        "left": 0,
+        "right": 0
+      },
+      "variants": [
+        {
+          "id": "var_seed_0",
+          "label": "Grey weave",
+          "hex": "#6b7280"
+        }
+      ],
+      "currency": "CAD",
+      "confidence": "manual",
+      "provenance": {
+        "method": "manual",
+        "citations": [],
+        "capturedAt": "2026-01-01T00:00:00.000Z"
+      },
+      "tags": [
+        "living room",
+        "starter"
+      ],
+      "notes": "Starter-library piece: a typical size for this type of furniture, not a measured product. Edit it, or use AI lookup to replace it with a real one.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "seatHeight": 457
+    },
+    {
+      "id": "item_seed_loveseat1",
+      "name": "Loveseat",
+      "categoryId": "seating",
+      "subcategoryId": "loveseat",
+      "w": 1473,
+      "d": 889,
+      "h": 838,
+      "footprint": {
+        "kind": "rect"
+      },
+      "clearances": {
+        "front": 457,
+        "back": 0,
+        "left": 0,
+        "right": 0
+      },
+      "variants": [
+        {
+          "id": "var_seed_1",
+          "label": "Taupe",
+          "hex": "#7c6f64"
+        }
+      ],
+      "currency": "CAD",
+      "confidence": "manual",
+      "provenance": {
+        "method": "manual",
+        "citations": [],
+        "capturedAt": "2026-01-01T00:00:00.000Z"
+      },
+      "tags": [
+        "living room",
+        "starter"
+      ],
+      "notes": "Starter-library piece: a typical size for this type of furniture, not a measured product. Edit it, or use AI lookup to replace it with a real one.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "seatHeight": 457
+    },
+    {
+      "id": "item_seed_armchair2",
+      "name": "Armchair",
+      "categoryId": "seating",
+      "subcategoryId": "armchair",
+      "w": 813,
+      "d": 864,
+      "h": 813,
+      "footprint": {
+        "kind": "rect"
+      },
+      "clearances": {
+        "front": 457,
+        "back": 0,
+        "left": 0,
+        "right": 0
+      },
+      "variants": [
+        {
+          "id": "var_seed_2",
+          "label": "Slate",
+          "hex": "#4a5568"
+        }
+      ],
+      "currency": "CAD",
+      "confidence": "manual",
+      "provenance": {
+        "method": "manual",
+        "citations": [],
+        "capturedAt": "2026-01-01T00:00:00.000Z"
+      },
+      "tags": [
+        "living room",
+        "starter"
+      ],
+      "notes": "Starter-library piece: a typical size for this type of furniture, not a measured product. Edit it, or use AI lookup to replace it with a real one.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "seatHeight": 457
+    },
+    {
+      "id": "item_seed_coffeetable3",
+      "name": "Rectangular coffee table",
+      "categoryId": "tables",
+      "subcategoryId": "coffee-table",
+      "w": 1219,
+      "d": 610,
+      "h": 432,
+      "footprint": {
+        "kind": "rect"
+      },
+      "clearances": {
+        "front": 406,
+        "back": 406,
+        "left": 0,
+        "right": 0
+      },
+      "variants": [
+        {
+          "id": "var_seed_3",
+          "label": "Walnut",
+          "hex": "#8a6240"
+        }
+      ],
+      "currency": "CAD",
+      "confidence": "manual",
+      "provenance": {
+        "method": "manual",
+        "citations": [],
+        "capturedAt": "2026-01-01T00:00:00.000Z"
+      },
+      "tags": [
+        "living room",
+        "starter"
+      ],
+      "notes": "Starter-library piece: a typical size for this type of furniture, not a measured product. Edit it, or use AI lookup to replace it with a real one.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "item_seed_mediaunit4",
+      "name": "Media console",
+      "categoryId": "storage",
+      "subcategoryId": "media-unit",
+      "w": 1524,
+      "d": 406,
+      "h": 610,
+      "footprint": {
+        "kind": "rect"
+      },
+      "clearances": {
+        "front": 762,
+        "back": 0,
+        "left": 0,
+        "right": 0
+      },
+      "variants": [
+        {
+          "id": "var_seed_4",
+          "label": "Charcoal oak",
+          "hex": "#3f3a36"
+        }
+      ],
+      "currency": "CAD",
+      "confidence": "manual",
+      "provenance": {
+        "method": "manual",
+        "citations": [],
+        "capturedAt": "2026-01-01T00:00:00.000Z"
+      },
+      "tags": [
+        "living room",
+        "starter"
+      ],
+      "notes": "Starter-library piece: a typical size for this type of furniture, not a measured product. Edit it, or use AI lookup to replace it with a real one.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "item_seed_arearug5",
+      "name": "8x10 area rug",
+      "categoryId": "rugs",
+      "subcategoryId": "area-rug",
+      "w": 3048,
+      "d": 2438,
+      "h": 12,
+      "footprint": {
+        "kind": "rect"
+      },
+      "clearances": {
+        "front": 0,
+        "back": 0,
+        "left": 0,
+        "right": 0
+      },
+      "variants": [
+        {
+          "id": "var_seed_5",
+          "label": "Natural",
+          "hex": "#9a8c7a"
+        }
+      ],
+      "currency": "CAD",
+      "confidence": "manual",
+      "provenance": {
+        "method": "manual",
+        "citations": [],
+        "capturedAt": "2026-01-01T00:00:00.000Z"
+      },
+      "tags": [
+        "living room",
+        "starter"
+      ],
+      "notes": "Starter-library piece: a typical size for this type of furniture, not a measured product. Edit it, or use AI lookup to replace it with a real one.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "item_seed_diningtable6",
+      "name": "Dining table, seats six",
+      "categoryId": "tables",
+      "subcategoryId": "dining-table",
+      "w": 1829,
+      "d": 914,
+      "h": 762,
+      "footprint": {
+        "kind": "rect"
+      },
+      "clearances": {
+        "front": 914,
+        "back": 914,
+        "left": 914,
+        "right": 914
+      },
+      "variants": [
+        {
+          "id": "var_seed_6",
+          "label": "Oak",
+          "hex": "#a0703c"
+        }
+      ],
+      "currency": "CAD",
+      "confidence": "manual",
+      "provenance": {
+        "method": "manual",
+        "citations": [],
+        "capturedAt": "2026-01-01T00:00:00.000Z"
+      },
+      "tags": [
+        "dining",
+        "starter"
+      ],
+      "notes": "Starter-library piece: a typical size for this type of furniture, not a measured product. Edit it, or use AI lookup to replace it with a real one.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "item_seed_diningchair7",
+      "name": "Dining chair",
+      "categoryId": "seating",
+      "subcategoryId": "dining-chair",
+      "w": 457,
+      "d": 533,
+      "h": 838,
+      "footprint": {
+        "kind": "rect"
+      },
+      "clearances": {
+        "front": 0,
+        "back": 914,
+        "left": 0,
+        "right": 0
+      },
+      "variants": [
+        {
+          "id": "var_seed_7",
+          "label": "Stained beech",
+          "hex": "#5b4636"
+        }
+      ],
+      "currency": "CAD",
+      "confidence": "manual",
+      "provenance": {
+        "method": "manual",
+        "citations": [],
+        "capturedAt": "2026-01-01T00:00:00.000Z"
+      },
+      "tags": [
+        "dining",
+        "starter"
+      ],
+      "notes": "Starter-library piece: a typical size for this type of furniture, not a measured product. Edit it, or use AI lookup to replace it with a real one.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "seatHeight": 457
+    },
+    {
+      "id": "item_seed_bedqueen8",
+      "name": "Queen bed",
+      "categoryId": "beds",
+      "subcategoryId": "bed-queen",
+      "w": 1600,
+      "d": 2108,
+      "h": 1143,
+      "footprint": {
+        "kind": "rect"
+      },
+      "clearances": {
+        "front": 914,
+        "back": 0,
+        "left": 610,
+        "right": 610
+      },
+      "variants": [
+        {
+          "id": "var_seed_8",
+          "label": "Heather",
+          "hex": "#6d5f7a"
+        }
+      ],
+      "currency": "CAD",
+      "confidence": "manual",
+      "provenance": {
+        "method": "manual",
+        "citations": [],
+        "capturedAt": "2026-01-01T00:00:00.000Z"
+      },
+      "tags": [
+        "bedroom",
+        "starter"
+      ],
+      "notes": "Starter-library piece: a typical size for this type of furniture, not a measured product. Edit it, or use AI lookup to replace it with a real one.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "item_seed_nightstand9",
+      "name": "Nightstand",
+      "categoryId": "tables",
+      "subcategoryId": "nightstand",
+      "w": 508,
+      "d": 406,
+      "h": 610,
+      "footprint": {
+        "kind": "rect"
+      },
+      "clearances": {
+        "front": 610,
+        "back": 0,
+        "left": 0,
+        "right": 0
+      },
+      "variants": [
+        {
+          "id": "var_seed_9",
+          "label": "Walnut",
+          "hex": "#8a6240"
+        }
+      ],
+      "currency": "CAD",
+      "confidence": "manual",
+      "provenance": {
+        "method": "manual",
+        "citations": [],
+        "capturedAt": "2026-01-01T00:00:00.000Z"
+      },
+      "tags": [
+        "bedroom",
+        "starter"
+      ],
+      "notes": "Starter-library piece: a typical size for this type of furniture, not a measured product. Edit it, or use AI lookup to replace it with a real one.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "item_seed_dresser10",
+      "name": "Six-drawer dresser",
+      "categoryId": "storage",
+      "subcategoryId": "dresser",
+      "w": 1524,
+      "d": 457,
+      "h": 813,
+      "footprint": {
+        "kind": "rect"
+      },
+      "clearances": {
+        "front": 914,
+        "back": 0,
+        "left": 0,
+        "right": 0
+      },
+      "variants": [
+        {
+          "id": "var_seed_10",
+          "label": "Ash",
+          "hex": "#7a6a58"
+        }
+      ],
+      "currency": "CAD",
+      "confidence": "manual",
+      "provenance": {
+        "method": "manual",
+        "citations": [],
+        "capturedAt": "2026-01-01T00:00:00.000Z"
+      },
+      "tags": [
+        "bedroom",
+        "starter"
+      ],
+      "notes": "Starter-library piece: a typical size for this type of furniture, not a measured product. Edit it, or use AI lookup to replace it with a real one.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "item_seed_desk11",
+      "name": "Writing desk",
+      "categoryId": "tables",
+      "subcategoryId": "desk",
+      "w": 1397,
+      "d": 660,
+      "h": 762,
+      "footprint": {
+        "kind": "rect"
+      },
+      "clearances": {
+        "front": 914,
+        "back": 0,
+        "left": 0,
+        "right": 0
+      },
+      "variants": [
+        {
+          "id": "var_seed_11",
+          "label": "Graphite",
+          "hex": "#4f5b66"
+        }
+      ],
+      "currency": "CAD",
+      "confidence": "manual",
+      "provenance": {
+        "method": "manual",
+        "citations": [],
+        "capturedAt": "2026-01-01T00:00:00.000Z"
+      },
+      "tags": [
+        "office",
+        "starter"
+      ],
+      "notes": "Starter-library piece: a typical size for this type of furniture, not a measured product. Edit it, or use AI lookup to replace it with a real one.",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ]
+}

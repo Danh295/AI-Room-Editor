@@ -11,7 +11,9 @@ dist/
 !.env.example
 
 # local app data: projects, furniture library, cached images
-data/
+data/*
+# ...except the starter library, which is app content rather than your data
+!data/seed/
 
 # logs
 *.log

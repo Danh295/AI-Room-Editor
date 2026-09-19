@@ -10,11 +10,41 @@ import fs from 'node:fs/promises';
  */
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(here, '..', '..');
+
 export const DATA_DIR = path.join(REPO_ROOT, 'data');
 export const PROJECTS_DIR = path.join(DATA_DIR, 'projects');
 export const LIBRARY_DIR = path.join(DATA_DIR, 'library');
 export const IMAGES_DIR = path.join(DATA_DIR, 'images');
 export const LIBRARY_FILE = path.join(LIBRARY_DIR, 'library.json');
+/** Starter furniture, committed to the repo and copied in on first run. */
+export const SEED_LIBRARY_FILE = path.join(REPO_ROOT, 'data', 'seed', 'library.json');
+
+/**
+ * Copy the starter library in the first time the app runs.
+ *
+ * A fresh clone with an empty library is a bad first five minutes: every
+ * feature past "draw a wall" needs something to place, and the only ways to get
+ * one are an AI key or typing a product in by hand. Seeding happens exactly
+ * once — the check is for the file existing, not for it being non-empty, so a
+ * user who deliberately empties their library doesn't find it refilled.
+ */
+async function seedLibraryIfMissing(): Promise<void> {
+  try {
+    await fs.access(LIBRARY_FILE);
+    return; // already has a library, seeded or not
+  } catch {
+    /* no library yet — fall through and seed */
+  }
+
+  try {
+    await fs.copyFile(SEED_LIBRARY_FILE, LIBRARY_FILE);
+    console.log('[server] seeded the furniture library with starter items');
+  } catch (err) {
+    // Not fatal: an empty library still works, and the UI explains how to fill
+    // it. Failing startup over missing sample data would be absurd.
+    console.warn('[server] could not seed the library:', (err as Error).message);
+  }
+}
 
 export async function ensureDataDirs(): Promise<void> {
   await Promise.all([
@@ -22,6 +52,7 @@ export async function ensureDataDirs(): Promise<void> {
     fs.mkdir(LIBRARY_DIR, { recursive: true }),
     fs.mkdir(IMAGES_DIR, { recursive: true }),
   ]);
+  await seedLibraryIfMissing();
 }
 
 /**
