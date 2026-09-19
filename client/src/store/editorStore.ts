@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
 import type { LibraryItem, PlacedItem, Project, ProjectSettings, Pt } from '@room/shared';
-import { createProject, appendWall, startChain, closeChain, placeItem } from '@room/shared';
+import { createProject, appendWall, startChain, closeChain, placeItem, newId } from '@room/shared';
 import { api } from '../api.js';
 
 /** Which pointer gesture the canvas is currently interpreting. */
@@ -64,6 +64,8 @@ export interface EditorState {
   // --- lifecycle
   loadProject: (id: string) => Promise<void>;
   newProject: (name?: string) => Promise<void>;
+  /** Drop the open project without touching disk — used after a delete. */
+  closeProject: () => void;
   loadLibrary: () => Promise<void>;
 
   // --- editing
@@ -93,6 +95,11 @@ export interface EditorState {
   removePlacement: (placementId: string) => void;
   /** Patch one placement. Use inside a gesture for drags. */
   updatePlacement: (placementId: string, patch: Partial<PlacedItem>) => void;
+  /**
+   * Copy every selected item, offset so the copy is visible and selected.
+   * Returns the new placement ids.
+   */
+  duplicateSelection: (offsetX: number, offsetY: number) => string[];
   /** Nudge every selected, unlocked item. */
   nudgeSelection: (dx: number, dy: number) => void;
   /** Rotate selected items by a delta, wrapped into [0,360). */
@@ -220,6 +227,23 @@ export const useEditor = create<EditorState>((set, get) => {
       });
       // Persist immediately so a refresh right after creation finds it.
       await get().save();
+    },
+
+    closeProject() {
+      // Cancel a queued autosave first: writing the project back out is exactly
+      // what must not happen when it has just been deleted.
+      saveTimer = clearTimer(saveTimer);
+      retryTimer = clearTimer(retryTimer);
+      set({
+        project: null,
+        past: [],
+        future: [],
+        gestureBase: null,
+        selection: [],
+        draft: null,
+        saveState: 'idle',
+        saveError: null,
+      });
     },
 
     async loadLibrary() {
@@ -358,6 +382,32 @@ export const useEditor = create<EditorState>((set, get) => {
         if (target.locked && !('locked' in patch)) return;
         Object.assign(target, patch);
       });
+    },
+
+    duplicateSelection(offsetX, offsetY) {
+      const { selection, project } = get();
+      if (!project || selection.length === 0) return [];
+
+      const originals = project.items.filter((i) => selection.includes(i.id));
+      if (originals.length === 0) return [];
+
+      // A duplicate is a new placement of the same library item, so it gets a
+      // fresh id and drops nothing else — including `locked`, since a copy you
+      // cannot move is not much of a copy.
+      const copies: PlacedItem[] = originals.map((original) => ({
+        ...original,
+        id: newId('pl'),
+        x: Math.round(original.x + offsetX),
+        y: Math.round(original.y + offsetY),
+        locked: false,
+      }));
+
+      get().edit((d) => {
+        d.items.push(...copies);
+      });
+      const ids = copies.map((c) => c.id);
+      set({ selection: ids });
+      return ids;
     },
 
     nudgeSelection(dx, dy) {
@@ -546,6 +596,14 @@ const LAST_PROJECT_KEY = 'roomEditor.lastProjectId';
 export function rememberProject(id: string): void {
   try {
     localStorage.setItem(LAST_PROJECT_KEY, id);
+  } catch {
+    /* private browsing / storage disabled */
+  }
+}
+
+export function forgetProject(): void {
+  try {
+    localStorage.removeItem(LAST_PROJECT_KEY);
   } catch {
     /* private browsing / storage disabled */
   }

@@ -183,6 +183,22 @@ describe('placements', () => {
     expect(useEditor.getState().project?.items).toHaveLength(1);
   });
 
+  it('duplicates the selection, offset and unlocked', () => {
+    const item = useEditor.getState().library[0]!;
+    const id = useEditor.getState().placeInRoom(item.id, 500, 500)!;
+    useEditor.getState().updatePlacement(id, { locked: true });
+    useEditor.getState().select([id]);
+
+    const copies = useEditor.getState().duplicateSelection(100, 100);
+    const items = useEditor.getState().project!.items;
+
+    expect(copies).toHaveLength(1);
+    expect(items).toHaveLength(2);
+    expect(items[1]).toMatchObject({ x: 600, y: 600, locked: false, libraryId: item.id });
+    // The copy is what you're now holding, not the original.
+    expect(useEditor.getState().selection).toEqual(copies);
+  });
+
   it('rotates into [0,360) rather than drifting negative', () => {
     const item = useEditor.getState().library[0]!;
     const id = useEditor.getState().placeInRoom(item.id, 0, 0)!;
@@ -305,4 +321,15 @@ describe('saving', () => {
     expect(saveProject).toHaveBeenCalledTimes(3);
   });
 
+  it('closing a project cancels the save that was about to happen', async () => {
+    useEditor.getState().edit((d) => {
+      d.name = 'about to be deleted';
+    });
+    useEditor.getState().closeProject();
+
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(saveProject).not.toHaveBeenCalled();
+    expect(useEditor.getState().project).toBeNull();
+    expect(useEditor.getState().saveState).toBe('idle');
+  });
 });

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Group, Line, Rect, Text, Circle, Arc, Image as KonvaImage } from 'react-konva';
-import type { ItemRenderMode, LibraryItem, PlacedItem } from '@room/shared';
+import type { ItemRenderMode, LibraryItem, PlacedItem, Pt } from '@room/shared';
 import { LAYER_ORDER, effectiveSize, formatLength, localFootprint } from '@room/shared';
 import type { UnitSystem } from '@room/shared';
 import { assetUrl } from '../api.js';
@@ -120,6 +120,10 @@ interface ItemProps {
   onRotateStart: () => void;
   onRotate: (id: string, degrees: number) => void;
   onRotateEnd: () => void;
+  /** Drag of a freeform footprint point; `points` are normalized 0..1. */
+  onShapeStart: () => void;
+  onShape: (id: string, points: Pt[]) => void;
+  onShapeEnd: () => void;
 }
 
 function PlacedFurniture({
@@ -136,6 +140,9 @@ function PlacedFurniture({
   onRotateStart,
   onRotate,
   onRotateEnd,
+  onShapeStart,
+  onShape,
+  onShapeEnd,
 }: ItemProps) {
   const inv = 1 / vp.scale;
   const image = useAssetImage(
@@ -295,6 +302,47 @@ function PlacedFurniture({
         </Group>
       )}
 
+      {/*
+        Freeform footprints are stored normalized to the bounding box, which is
+        what lets them survive a resize — so a dragged handle has to be mapped
+        back out of world space into 0..1 before it's stored.
+      */}
+      {selected && !placed.locked && footprint.kind === 'poly' && (
+        <Group>
+          {outline.map((point, index) => (
+            <Circle
+              key={index}
+              x={point.x}
+              y={point.y}
+              radius={5 * inv}
+              fill="#11141a"
+              stroke={SELECTED}
+              strokeWidth={2 * inv}
+              hitStrokeWidth={16 * inv}
+              draggable
+              onDragStart={(e) => {
+                e.cancelBubble = true;
+                onShapeStart();
+              }}
+              onDragMove={(e) => {
+                e.cancelBubble = true;
+                const clamp = (v: number) => Math.min(1, Math.max(0, v));
+                const next = outline.map((p, i) =>
+                  i === index
+                    ? { x: clamp((e.target.x() + w / 2) / w), y: clamp((e.target.y() + d / 2) / d) }
+                    : { x: clamp((p.x + w / 2) / w), y: clamp((p.y + d / 2) / d) },
+                );
+                onShape(placed.id, next);
+              }}
+              onDragEnd={(e) => {
+                e.cancelBubble = true;
+                onShapeEnd();
+              }}
+            />
+          ))}
+        </Group>
+      )}
+
       {placed.locked && (
         <Circle x={0} y={0} radius={5 * inv} fill="#0d0f13" stroke="#949aa6" strokeWidth={1 * inv} />
       )}
@@ -334,6 +382,9 @@ export interface ItemLayerProps {
   onRotateStart: () => void;
   onRotate: (id: string, degrees: number) => void;
   onRotateEnd: () => void;
+  onShapeStart: () => void;
+  onShape: (id: string, points: Pt[]) => void;
+  onShapeEnd: () => void;
 }
 
 export default function ItemLayer({
@@ -350,6 +401,9 @@ export default function ItemLayer({
   onRotateStart,
   onRotate,
   onRotateEnd,
+  onShapeStart,
+  onShape,
+  onShapeEnd,
 }: ItemLayerProps) {
   const byId = useMemo(() => new Map(library.map((i) => [i.id, i])), [library]);
 
@@ -378,6 +432,9 @@ export default function ItemLayer({
           onRotateStart={onRotateStart}
           onRotate={onRotate}
           onRotateEnd={onRotateEnd}
+          onShapeStart={onShapeStart}
+          onShape={onShape}
+          onShapeEnd={onShapeEnd}
         />
       ))}
     </Group>

@@ -2,7 +2,14 @@ import { useEffect, useState, useCallback } from 'react';
 import type { ProjectSummary } from '@room/shared';
 import { formatLength } from '@room/shared';
 import { api, type Health } from './api.js';
-import { useEditor, rememberProject, recallProject, idKind, type Tool } from './store/editorStore.js';
+import {
+  useEditor,
+  rememberProject,
+  recallProject,
+  forgetProject,
+  idKind,
+  type Tool,
+} from './store/editorStore.js';
 import { useViewport } from './canvas/viewport.js';
 import { useConflictStore, summarize } from './canvas/conflictStore.js';
 import PlanCanvas from './canvas/PlanCanvas.js';
@@ -37,6 +44,7 @@ export default function App() {
   const loadProject = useEditor((s) => s.loadProject);
   const newProject = useEditor((s) => s.newProject);
   const loadLibrary = useEditor((s) => s.loadLibrary);
+  const closeProject = useEditor((s) => s.closeProject);
   const edit = useEditor((s) => s.edit);
   const beginGesture = useEditor((s) => s.beginGesture);
   const endGesture = useEditor((s) => s.endGesture);
@@ -50,14 +58,65 @@ export default function App() {
 
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [health, setHealth] = useState<Health | null>(null);
+  /** Which row is asking "really delete?" — an inline confirm, not a modal. */
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  /** Which row is being renamed in place, and what's been typed so far. */
+  const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null);
 
-  const refreshProjects = useCallback(async () => {
+  const refreshProjects = useCallback(async (): Promise<ProjectSummary[]> => {
     try {
-      setProjects(await api.listProjects());
+      const list = await api.listProjects();
+      setProjects(list);
+      return list;
     } catch (err) {
       console.error('[projects]', err);
+      return [];
     }
   }, []);
+
+  async function commitRename() {
+    if (!renaming) return;
+    const { id, value } = renaming;
+    const name = value.trim();
+    setRenaming(null);
+
+    const current = projects.find((p) => p.id === id);
+    if (!name || name === current?.name) return;
+
+    // The open project is renamed through the store so it joins the undo
+    // history and the autosave already in place; a closed one is a read,
+    // a patch, and a write, without disturbing what's on screen.
+    if (id === project?.id) {
+      edit((draft) => {
+        draft.name = name;
+      });
+      return;
+    }
+
+    try {
+      const loaded = await api.getProject(id);
+      await api.saveProject({ ...loaded, name });
+    } catch (err) {
+      console.error('[projects] rename failed', err);
+    }
+    await refreshProjects();
+  }
+
+  async function handleDelete(id: string) {
+    setConfirmDelete(null);
+    try {
+      await api.deleteProject(id);
+    } catch (err) {
+      console.error('[projects] delete failed', err);
+    }
+    // Deleting the open project leaves the editor pointing at a file that no
+    // longer exists, so close it and forget it as the last-opened one.
+    if (id === project?.id) {
+      forgetProject();
+      closeProject();
+    }
+    await refreshProjects();
+  }
 
   useEffect(() => {
     void (async () => {
@@ -66,17 +125,28 @@ export default function App() {
       } catch {
         setHealth(null);
       }
-      await refreshProjects();
+      const known = await refreshProjects();
       await loadLibrary();
 
+      // Reopen the last room, but only if it's still there. Asking the server
+      // for a project that has since been deleted answers 404, and the startup
+      // path would show that raw as though something had gone wrong.
       const last = recallProject();
-      if (last) await loadProject(last);
+      if (last && known.some((p) => p.id === last)) await loadProject(last);
+      else if (last) forgetProject();
     })();
   }, [refreshProjects, loadLibrary, loadProject]);
 
   useEffect(() => {
     if (project) rememberProject(project.id);
   }, [project?.id]);
+
+  // The row's item count comes from the file on disk, so it only becomes true
+  // again once a save lands. Refreshing on that edge keeps the list from
+  // quietly disagreeing with the canvas.
+  useEffect(() => {
+    if (saveState === 'saved') void refreshProjects();
+  }, [saveState, refreshProjects]);
 
   // Undo/redo and tool shortcuts. Skipped while typing, so Ctrl+Z in a field
   // does what the field expects rather than reverting the plan behind it.
@@ -192,15 +262,63 @@ export default function App() {
           <div className="project-list">
             {projects.length === 0 && <span className="muted">No rooms yet.</span>}
             {projects.map((p) => (
-              <button
-                key={p.id}
-                className="project-row"
-                aria-current={p.id === project?.id}
-                onClick={() => void loadProject(p.id)}
-              >
-                <span>{p.name}</span>
-                <span className="meta">{p.itemCount} items</span>
-              </button>
+              <div key={p.id} className="project-row" aria-current={p.id === project?.id}>
+                {renaming?.id === p.id ? (
+                  <input
+                    className="row-rename"
+                    autoFocus
+                    value={renaming.value}
+                    aria-label={`Rename ${p.name}`}
+                    onChange={(e) => setRenaming({ id: p.id, value: e.target.value })}
+                    onBlur={() => void commitRename()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') void commitRename();
+                      if (e.key === 'Escape') setRenaming(null);
+                    }}
+                  />
+                ) : (
+                  <button className="project-open" onClick={() => void loadProject(p.id)}>
+                    <span>{p.name}</span>
+                    <span className="meta">{p.itemCount} items</span>
+                  </button>
+                )}
+
+                {confirmDelete === p.id ? (
+                  <>
+                    <button
+                      className="linky danger"
+                      onClick={() => void handleDelete(p.id)}
+                      title={`Permanently delete ${p.name}`}
+                    >
+                      Delete
+                    </button>
+                    <button className="linky" onClick={() => setConfirmDelete(null)}>
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  renaming?.id !== p.id && (
+                    <>
+                      <button
+                        className="row-x"
+                        aria-label={`Rename ${p.name}`}
+                        title="Rename this room"
+                        onClick={() => setRenaming({ id: p.id, value: p.name })}
+                      >
+                        ✎
+                      </button>
+                      <button
+                        className="row-x"
+                        aria-label={`Delete ${p.name}`}
+                        title="Delete this room"
+                        onClick={() => setConfirmDelete(p.id)}
+                      >
+                        ✕
+                      </button>
+                    </>
+                  )
+                )}
+              </div>
             ))}
           </div>
 

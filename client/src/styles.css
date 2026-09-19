@@ -189,7 +189,7 @@ select:focus {
 
 .project-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   width: 100%;
   text-align: left;
@@ -775,4 +775,53 @@ a {
 
 .conflict-chip.bad:hover {
   background: #4a2323;
+}
+
+/* Project rows carry a delete affordance, so the row is a container and the
+   name is the button inside it rather than the row being one big button. */
+.project-open {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.project-open > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-x {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  padding: 0 4px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.project-row:hover .row-x,
+.row-x:focus-visible {
+  opacity: 1;
+}
+
+.row-x:hover {
+  color: var(--danger);
+}
+
+.linky.danger {
+  color: var(--danger);
+}
+
+.row-rename {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 6px;
+  font: inherit;
 }

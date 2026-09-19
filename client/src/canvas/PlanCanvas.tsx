@@ -61,7 +61,6 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
   const draftAdd = useEditor((s) => s.draftAdd);
   const draftHover = useEditor((s) => s.draftHover);
   const draftFinish = useEditor((s) => s.draftFinish);
-  const setTool = useEditor((s) => s.setTool);
   const updatePlacement = useEditor((s) => s.updatePlacement);
 
   const vp = useViewport();
@@ -270,6 +269,16 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
         return;
       }
 
+      // Ctrl/Cmd+D duplicates, offset by one grid step so the copy is visibly
+      // its own object rather than hiding exactly behind the original.
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        const step = state.project?.settings.gridStep || Math.round(MM_PER_INCH);
+        const offset = Math.max(step, Math.round(4 * MM_PER_INCH));
+        state.duplicateSelection(offset, offset);
+        return;
+      }
+
       // Rotate in 15-degree steps, matching the drag handle.
       if (e.key === '[' || e.key === ']') {
         e.preventDefault();
@@ -465,6 +474,16 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
               updatePlacement(id, { rotation: ((snapped % 360) + 360) % 360 });
             }}
             onRotateEnd={endGesture}
+            onShapeStart={beginGesture}
+            onShape={(id, points) => {
+              const placed = project.items.find((i) => i.id === id);
+              const item = placed ? libraryById.get(placed.libraryId) : undefined;
+              if (!placed || !item) return;
+              // Keep the item's own kind: dragging a point turns an L or a rect
+              // into a polygon, and that's the only way to edit one by hand.
+              updatePlacement(id, { footprint: { kind: 'poly', points } });
+            }}
+            onShapeEnd={endGesture}
           />
           {tool === 'select' && (
             <VertexLayer

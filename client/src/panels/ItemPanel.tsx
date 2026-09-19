@@ -13,6 +13,7 @@ import {
   effectiveSize,
   findSubcategory,
   formatLength,
+  localFootprint,
 } from '@room/shared';
 import { useEditor, idKind } from '../store/editorStore.js';
 import LengthInput from '../components/LengthInput.js';
@@ -383,10 +384,21 @@ function SingleItem({ placed, item }: { placed: PlacedItem; item: LibraryItem | 
         <label>Footprint</label>
         <select
           value={footprint.kind}
-          disabled={locked || footprint.kind === 'poly'}
+          disabled={locked}
           aria-label="Footprint shape"
           onChange={(e) => {
             const kind = e.target.value;
+            if (kind === 'poly') {
+              // Seed the outline from whatever shape is there now, normalized
+              // to the bounding box, so switching to freeform changes nothing
+              // visually and the handles start exactly on the existing corners.
+              const points = localFootprint(footprint, size.w, size.d).map((p) => ({
+                x: (p.x + size.w / 2) / size.w,
+                y: (p.y + size.d / 2) / size.d,
+              }));
+              updatePlacement(placed.id, { footprint: { kind: 'poly', points } });
+              return;
+            }
             updatePlacement(placed.id, {
               footprint:
                 kind === 'L'
@@ -397,14 +409,14 @@ function SingleItem({ placed, item }: { placed: PlacedItem; item: LibraryItem | 
         >
           <option value="rect">Rectangle</option>
           <option value="L">L-shaped</option>
-          {footprint.kind === 'poly' && <option value="poly">Custom outline</option>}
+          <option value="poly">Custom outline</option>
         </select>
       </div>
 
       {footprint.kind === 'poly' && (
         <p className="hint">
-          This item has a custom outline. Editing its points isn’t supported yet — switch
-          the library item to a rectangle or L-shape to change it here.
+          Drag the points on the plan to reshape this outline. It belongs to this
+          placement only — pick <b>Rectangle</b> above to start over.
         </p>
       )}
 
