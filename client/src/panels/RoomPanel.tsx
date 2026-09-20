@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { ItemRenderMode } from '@room/shared';
 import {
   MM_PER_FOOT,
@@ -14,11 +14,40 @@ import {
   deleteOpening,
   resizeOpening,
   defaultGridStep,
+  rollUpCost,
+  rollupToCsv,
 } from '@room/shared';
 import { useEditor, idKind } from '../store/editorStore.js';
 import LengthInput from '../components/LengthInput.js';
 import { fitRoomToView } from '../canvas/PlanCanvas.js';
+import {
+  download,
+  downloadText,
+  exportPlanPng,
+  printPlan,
+  safeFilename,
+} from '../canvas/exportPlan.js';
 import FloorplanDialog from './FloorplanDialog.js';
+
+/** Money without pulling in a formatting library for one number. */
+function money(amount: number, currency: string | null): string {
+  const rounded = Math.round(amount * 100) / 100;
+  const text = rounded.toLocaleString(undefined, {
+    minimumFractionDigits: rounded % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+  return currency ? `${text} ${currency}` : text;
+}
+
+/** One label/value pair inside a stat grid. */
+function FragmentRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <>
+      <span>{label}</span>
+      <b>{children}</b>
+    </>
+  );
+}
 
 /** Quick-room dialog: width x length, optionally with a notch. */
 function QuickRoom({ onClose }: { onClose: () => void }) {
@@ -118,12 +147,19 @@ function QuickRoom({ onClose }: { onClose: () => void }) {
 
 export default function RoomPanel() {
   const project = useEditor((s) => s.project);
+  const library = useEditor((s) => s.library);
   const selection = useEditor((s) => s.selection);
   const edit = useEditor((s) => s.edit);
   const updateSettings = useEditor((s) => s.updateSettings);
   const select = useEditor((s) => s.select);
   const [quickOpen, setQuickOpen] = useState(false);
   const [traceOpen, setTraceOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const cost = useMemo(
+    () => rollUpCost(project?.items ?? [], new Map(library.map((i) => [i.id, i]))),
+    [project?.items, library],
+  );
 
   if (!project) return <span className="muted">No room open.</span>;
 
@@ -355,6 +391,88 @@ export default function RoomPanel() {
           <option value="both">Both</option>
         </select>
       </div>
+
+      <h2>Costs</h2>
+
+      {cost.itemCount === 0 ? (
+        <p className="hint">Nothing placed yet.</p>
+      ) : (
+        <>
+          <div className="stat-grid">
+            <span>Items</span>
+            <b>{cost.itemCount}</b>
+            <span>Total</span>
+            <b>{money(cost.total, cost.currency)}</b>
+          </div>
+
+          {cost.byCategory.length > 1 && (
+            <div className="stat-grid subtle">
+              {cost.byCategory.map((c) => (
+                <FragmentRow key={c.categoryId} label={`${c.label} (${c.count})`}>
+                  {money(c.total, cost.currency)}
+                </FragmentRow>
+              ))}
+            </div>
+          )}
+
+          {/* The total is only as good as the library behind it; say so rather
+              than letting a confident number stand in for one. */}
+          {cost.unpricedCount > 0 && (
+            <p className="hint">
+              {cost.unpricedCount} of {cost.itemCount} placed items have no price, so the
+              total is a floor, not an estimate.
+            </p>
+          )}
+          {cost.mixedCurrencies && (
+            <p className="hint warn-text">
+              Prices are in more than one currency — the total adds them as if they were
+              the same.
+            </p>
+          )}
+        </>
+      )}
+
+      <h2>Export</h2>
+      <div className="button-row">
+        <button
+          disabled={busy || polygon.length === 0}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              const url = await exportPlanPng();
+              if (url) download(url, safeFilename(project.name, 'png'));
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Plan as PNG
+        </button>
+        <button
+          disabled={cost.itemCount === 0}
+          onClick={() => downloadText(rollupToCsv(cost), safeFilename(project.name, 'csv'))}
+        >
+          Costs as CSV
+        </button>
+        <button
+          disabled={busy || polygon.length === 0}
+          title="Print the plan, or save it as a PDF from the print dialog"
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await printPlan();
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Print…
+        </button>
+      </div>
+      <p className="hint">
+        The PNG captures the current view, minus the grid and conflict marks — pan and
+        zoom first to frame it.
+      </p>
 
       {quickOpen && <QuickRoom onClose={() => setQuickOpen(false)} />}
       {traceOpen && <FloorplanDialog units={units} onClose={() => setTraceOpen(false)} />}

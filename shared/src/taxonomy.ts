@@ -503,6 +503,11 @@ for (const category of TAXONOMY) {
 export const FALLBACK_CATEGORY_ID = 'other';
 export const FALLBACK_SUBCATEGORY_ID = 'uncategorized';
 
+/** A category by id, or null. Used wherever an item is grouped for display. */
+export function findCategory(categoryId: string): Category | null {
+  return TAXONOMY.find((c) => c.id === categoryId) ?? null;
+}
+
 export function findSubcategory(
   subcategoryId: string,
   categoryId?: string,

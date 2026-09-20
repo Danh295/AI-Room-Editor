@@ -819,6 +819,52 @@ a {
   color: var(--danger);
 }
 
+/* The printable sheet: a rendered picture of the plan, not the live app.
+   It never shows on screen — only `@media print` reveals it. */
+.print-sheet {
+  display: none;
+}
+
+.stat-grid.subtle b,
+.stat-grid.subtle span {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.hint.warn-text {
+  color: var(--warn);
+}
+
+@media print {
+  @page {
+    margin: 14mm;
+  }
+
+  body {
+    background: #fff;
+    overflow: visible;
+  }
+
+  .app {
+    display: none !important;
+  }
+
+  .print-sheet {
+    display: block;
+    color: #000;
+  }
+
+  .print-sheet h1 {
+    font-size: 16pt;
+    margin: 0 0 8mm;
+  }
+
+  .print-sheet img {
+    width: 100%;
+    height: auto;
+  }
+}
+
 .row-rename {
   flex: 1;
   min-width: 0;

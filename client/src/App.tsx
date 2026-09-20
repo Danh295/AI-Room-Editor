@@ -13,6 +13,7 @@ import {
 import { useViewport } from './canvas/viewport.js';
 import { useConflictStore, summarize } from './canvas/conflictStore.js';
 import PlanCanvas from './canvas/PlanCanvas.js';
+import { useExportMode } from './canvas/exportPlan.js';
 import RoomPanel from './panels/RoomPanel.js';
 import ItemPanel from './panels/ItemPanel.js';
 import LibraryPanel from './panels/LibraryPanel.js';
@@ -54,6 +55,7 @@ export default function App() {
   const selection = useEditor((s) => s.selection);
   const scale = useViewport((s) => s.scale);
   const conflicts = useConflictStore((s) => s.conflicts);
+  const printImage = useExportMode((s) => s.printImage);
   const nextConflict = useConflictStore((s) => s.next);
 
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
@@ -188,6 +190,15 @@ export default function App() {
   const units = project?.settings.units ?? 'imperial';
 
   return (
+    <>
+      {/* Only ever visible to the printer; see the @media print rules. */}
+      {printImage && (
+        <div className="print-sheet">
+          <h1>{project?.name}</h1>
+          <img src={printImage} alt={`Plan of ${project?.name ?? 'the room'}`} />
+        </div>
+      )}
+
     <div className="app">
       <header className="topbar">
         <span className="title">AI Room Editor</span>
@@ -394,5 +405,6 @@ export default function App() {
         )}
       </footer>
     </div>
+    </>
   );
 }

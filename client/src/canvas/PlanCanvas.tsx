@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Stage, Layer } from 'react-konva';
+import { Stage, Layer, Rect } from 'react-konva';
 import type Konva from 'konva';
 import type { Pt } from '@room/shared';
 import {
@@ -18,6 +18,7 @@ import { snapPoint, nearestWall, type SnapResult } from './snapping.js';
 import ItemLayer from './ItemLayer.js';
 import ConflictLayer from './ConflictLayer.js';
 import { useConflictStore } from './conflictStore.js';
+import { registerStage, useExportMode } from './exportPlan.js';
 import {
   GridLayer,
   UnderlayLayer,
@@ -64,6 +65,8 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
   const updatePlacement = useEditor((s) => s.updatePlacement);
 
   const vp = useViewport();
+  // A view-only override while a PNG is being taken; see exportPlan.ts.
+  const exporting = useExportMode((s) => s.exporting);
   const [snap, setSnap] = useState<SnapResult | null>(null);
   const [shiftHeld, setShiftHeld] = useState(false);
   const panning = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(
@@ -72,6 +75,12 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
 
   const room = project?.room;
   const settings = project?.settings;
+
+  // Hand the stage to the exporter for as long as this canvas is mounted.
+  useEffect(() => {
+    registerStage(stageRef.current);
+    return () => registerStage(null);
+  }, []);
 
   // Keep the stage the size of its container.
   useEffect(() => {
@@ -434,7 +443,18 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
         onContextMenu={(e) => e.evt.preventDefault()}
       >
         <Layer listening={false}>
-          {settings.showGrid && <GridLayer vp={vp} step={settings.gridStep} />}
+          {/* An exported PNG is transparent without this, which reads as black
+              in most viewers and hides half the drawing. */}
+          {exporting && (
+            <Rect
+              x={-vp.x / vp.scale}
+              y={-vp.y / vp.scale}
+              width={vp.width / vp.scale}
+              height={vp.height / vp.scale}
+              fill="#14161a"
+            />
+          )}
+          {settings.showGrid && !exporting && <GridLayer vp={vp} step={settings.gridStep} />}
           <UnderlayLayer room={room} />
           <FloorLayer room={room} />
         </Layer>
@@ -443,7 +463,7 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
           <WallLayer
             room={room}
             vp={vp}
-            selection={selection}
+            selection={exporting ? [] : selection}
             onWallClick={(wallId, e) => toggleSelect(wallId, e.evt.shiftKey)}
             onWallDblClick={onEditWallLength}
           />
@@ -456,7 +476,7 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
           <ItemLayer
             items={project.items}
             library={library}
-            selection={selection}
+            selection={exporting ? [] : selection}
             vp={vp}
             units={settings.units}
             renderMode={settings.itemRender}
@@ -485,7 +505,7 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
             }}
             onShapeEnd={endGesture}
           />
-          {tool === 'select' && (
+          {tool === 'select' && !exporting && (
             <VertexLayer
               room={room}
               vp={vp}
@@ -502,9 +522,9 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
             items={project.items}
             library={libraryById}
             room={room}
-            conflicts={conflicts}
-            selection={selection}
-            showClearances={settings.showClearances}
+            conflicts={exporting ? [] : conflicts}
+            selection={exporting ? [] : selection}
+            showClearances={settings.showClearances && !exporting}
             vp={vp}
             units={settings.units}
           />
@@ -521,7 +541,7 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
               willClose={willClose}
             />
           )}
-          {tool !== 'select' && snap && (
+          {tool !== 'select' && snap && !exporting && (
             <SnapMarker point={snap.point} vp={vp} kind={snap.kind} />
           )}
         </Layer>
