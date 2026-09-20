@@ -9,7 +9,10 @@ export default defineConfig({
     // API key stays on the server side of the wall.
     proxy: {
       '/api': {
-        target: 'http://localhost:8787',
+        // 127.0.0.1, not localhost: the server binds to IPv4 loopback, and on
+        // a machine where localhost resolves to ::1 first, Node's fetch tries
+        // that address only and every proxied call comes back 502.
+        target: 'http://127.0.0.1:8787',
         changeOrigin: true,
       },
     },

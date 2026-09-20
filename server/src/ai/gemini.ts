@@ -37,6 +37,23 @@ const DEFAULT_EXTRACT_MODEL = process.env.GEMINI_EXTRACT_MODEL ?? 'gemini-2.5-fl
  */
 const DEFAULT_VISION_MODEL = process.env.GEMINI_VISION_MODEL ?? 'gemini-3.5-flash';
 
+/**
+ * One line per model call.
+ *
+ * A lookup that takes 40 seconds and a lookup that fails after 40 seconds feel
+ * identical from the UI, and neither is diagnosable without knowing which model
+ * was asked and how long it took.
+ */
+function logCall(kind: string, model: string, startedAt: number, err?: unknown): void {
+  const ms = Date.now() - startedAt;
+  if (err) {
+    const message = err instanceof Error ? err.message.split('\n')[0] : String(err);
+    console.warn(`[ai] ${kind} ${model} failed after ${ms}ms: ${message}`);
+    return;
+  }
+  console.log(`[ai] ${kind} ${model} ok in ${ms}ms`);
+}
+
 interface GroundingChunk {
   web?: { uri?: string; title?: string };
 }
@@ -90,13 +107,16 @@ export class GeminiProvider implements AiProvider {
     parts.push({ text: input.prompt });
 
     let response;
+    const started = Date.now();
     try {
       response = await this.client.models.generateContent({
         model: this.researchModel,
         contents: [{ role: 'user', parts }],
         config: { tools: [{ googleSearch: {} }] },
       });
+      logCall('research', this.researchModel, started);
     } catch (err) {
+      logCall('research', this.researchModel, started, err);
       throw toAiError(err);
     }
 
@@ -142,9 +162,11 @@ export class GeminiProvider implements AiProvider {
     parts.push({ text: input.prompt });
 
     let response;
+    const model = input.model ?? this.extractModel;
+    const started = Date.now();
     try {
       response = await this.client.models.generateContent({
-        model: input.model ?? this.extractModel,
+        model,
         contents: [{ role: 'user', parts }],
         config: {
           // No tools here on purpose — see provider.ts. Gemini rejects the
@@ -153,7 +175,9 @@ export class GeminiProvider implements AiProvider {
           responseSchema: input.schema,
         },
       });
+      logCall('extract', model, started);
     } catch (err) {
+      logCall('extract', model, started, err);
       throw toAiError(err);
     }
 

@@ -11,11 +11,23 @@ import fs from 'node:fs/promises';
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(here, '..', '..');
 
-export const DATA_DIR = path.join(REPO_ROOT, 'data');
+/**
+ * Where the data lives.
+ *
+ * Defaults to `<repo>/data`, and `ROOM_DATA_DIR` overrides it — which is what
+ * a container mounts a volume at, and what the tests point somewhere temporary
+ * so they never touch a real project file.
+ */
+export const DATA_DIR = process.env.ROOM_DATA_DIR
+  ? path.resolve(process.env.ROOM_DATA_DIR)
+  : path.join(REPO_ROOT, 'data');
 export const PROJECTS_DIR = path.join(DATA_DIR, 'projects');
 export const LIBRARY_DIR = path.join(DATA_DIR, 'library');
 export const IMAGES_DIR = path.join(DATA_DIR, 'images');
 export const LIBRARY_FILE = path.join(LIBRARY_DIR, 'library.json');
+/** The built client, served by this process when NODE_ENV=production. */
+export const CLIENT_DIST = path.join(REPO_ROOT, 'client', 'dist');
+
 /** Starter furniture, committed to the repo and copied in on first run. */
 export const SEED_LIBRARY_FILE = path.join(REPO_ROOT, 'data', 'seed', 'library.json');
 
