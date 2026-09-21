@@ -1,0 +1,20 @@
+services:
+  room-editor:
+    build: .
+    # Published on loopback only: the app has no accounts and no passwords, so
+    # anything that can reach the port can read and overwrite every project.
+    ports:
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - ./data:/data
+    # On macOS and Windows the file sharing layer maps ownership for you. On
+    # Linux a bind-mounted ./data keeps your host uid, and the container runs
+    # as `node` (uid 1000) — if that isn't your uid, start it with
+    # `UID=$(id -u) GID=$(id -g) docker compose up` or the first save fails
+    # with a permission error (the server says so on startup).
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      # Optional — without it, drawing and manual entry still work; AI lookup
+      # and floor plan tracing don't. See .env.example.
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    restart: unless-stopped

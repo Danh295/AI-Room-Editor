@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      # Catches the things only a real build shows: the server bundle
+      # resolving @room/shared, and the client compiling for production.
+      - name: Build
+        run: npm run build
+
+      - name: Smoke-test the production server
+        run: |
+          NODE_ENV=production PORT=8787 node server/dist/index.js &
+          for i in $(seq 1 20); do
+            curl -sf http://127.0.0.1:8787/api/health && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8787/api/health | grep -q '"ok":true'
+          # The built client has to be served by that same process.
+          curl -sf http://127.0.0.1:8787/ | grep -q '<div id="root">'

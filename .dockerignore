@@ -1,0 +1,15 @@
+node_modules
+**/node_modules
+**/dist
+.git
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+
+# Your rooms and library stay out of the image; the starter library ships in it.
+# Same shape as .gitignore, which is the pattern that's been verified to
+# re-include the subdirectory.
+data/*
+!data/seed/
