@@ -171,7 +171,12 @@ export default function App() {
       }
 
       // Single-key tool switches, the way every drawing app does it.
-      const shortcuts: Record<string, Tool> = { v: 'select', w: 'wall', d: 'door', n: 'window' };
+      const shortcuts: Record<string, Tool> = {
+        v: 'select',
+        w: 'wall',
+        d: 'door',
+        n: 'window',
+      };
       const next = shortcuts[event.key.toLowerCase()];
       if (next) {
         event.preventDefault();
@@ -199,212 +204,213 @@ export default function App() {
         </div>
       )}
 
-    <div className="app">
-      <header className="topbar">
-        <span className="title">AI Room Editor</span>
+      <div className="app">
+        <header className="topbar">
+          <span className="title">AI Room Editor</span>
 
-        {project && (
-          <input
-            value={project.name}
-            onChange={(e) =>
-              edit((draft) => {
-                draft.name = e.target.value;
-              })
-            }
-            // Without the gesture wrapper every keystroke is its own undo entry,
-            // so Ctrl+Z after a rename walks back one letter at a time.
-            onFocus={beginGesture}
-            onBlur={endGesture}
-            aria-label="Project name"
-            style={{ width: 200 }}
-          />
-        )}
+          {project && (
+            <input
+              value={project.name}
+              onChange={(e) =>
+                edit((draft) => {
+                  draft.name = e.target.value;
+                })
+              }
+              // Without the gesture wrapper every keystroke is its own undo entry,
+              // so Ctrl+Z after a rename walks back one letter at a time.
+              onFocus={beginGesture}
+              onBlur={endGesture}
+              aria-label="Project name"
+              style={{ width: 200 }}
+            />
+          )}
 
-        {project && (
-          <div className="toolgroup" role="toolbar" aria-label="Drawing tools">
-            {TOOLS.map((t) => (
-              <button
-                key={t.id}
-                className={tool === t.id ? 'tool active' : 'tool'}
-                aria-pressed={tool === t.id}
-                title={t.hint}
-                onClick={() => setTool(t.id)}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <span className="spacer" />
-
-        <button onClick={undo} disabled={past.length === 0} title="Undo (Ctrl+Z)">
-          Undo
-        </button>
-        <button onClick={redo} disabled={future.length === 0} title="Redo (Ctrl+Shift+Z)">
-          Redo
-        </button>
-        <button className="primary" onClick={handleNew}>
-          New room
-        </button>
-      </header>
-
-      <div className="workspace">
-        <aside className="panel">
-          <h2>Projects</h2>
-
-          {health && !health.aiProvider && (
-            <div className="banner warn">
-              No AI key set. Drawing and manual entry work normally; floor plan
-              tracing and product lookup need a key in <code>.env</code> — see{' '}
-              <code>.env.example</code> — then restart the server.
+          {project && (
+            <div className="toolgroup" role="toolbar" aria-label="Drawing tools">
+              {TOOLS.map((t) => (
+                <button
+                  key={t.id}
+                  className={tool === t.id ? 'tool active' : 'tool'}
+                  aria-pressed={tool === t.id}
+                  title={t.hint}
+                  onClick={() => setTool(t.id)}
+                >
+                  {t.label}
+                </button>
+              ))}
             </div>
           )}
-          {health?.aiProvider && (
-            <div className="banner ok">AI provider: {health.aiProvider}</div>
-          )}
-          {!health && (
-            <div className="banner error">
-              Can’t reach the API server on <code>:8787</code>. Is <code>npm run dev</code> running?
-            </div>
-          )}
-          {loadError && <div className="banner error">{loadError}</div>}
 
-          <div className="project-list">
-            {projects.length === 0 && <span className="muted">No rooms yet.</span>}
-            {projects.map((p) => (
-              <div key={p.id} className="project-row" aria-current={p.id === project?.id}>
-                {renaming?.id === p.id ? (
-                  <input
-                    className="row-rename"
-                    autoFocus
-                    value={renaming.value}
-                    aria-label={`Rename ${p.name}`}
-                    onChange={(e) => setRenaming({ id: p.id, value: e.target.value })}
-                    onBlur={() => void commitRename()}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') void commitRename();
-                      if (e.key === 'Escape') setRenaming(null);
-                    }}
-                  />
-                ) : (
-                  <button className="project-open" onClick={() => void loadProject(p.id)}>
-                    <span>{p.name}</span>
-                    <span className="meta">{p.itemCount} items</span>
-                  </button>
-                )}
+          <span className="spacer" />
 
-                {confirmDelete === p.id ? (
-                  <>
-                    <button
-                      className="linky danger"
-                      onClick={() => void handleDelete(p.id)}
-                      title={`Permanently delete ${p.name}`}
-                    >
-                      Delete
+          <button onClick={undo} disabled={past.length === 0} title="Undo (Ctrl+Z)">
+            Undo
+          </button>
+          <button onClick={redo} disabled={future.length === 0} title="Redo (Ctrl+Shift+Z)">
+            Redo
+          </button>
+          <button className="primary" onClick={handleNew}>
+            New room
+          </button>
+        </header>
+
+        <div className="workspace">
+          <aside className="panel">
+            <h2>Projects</h2>
+
+            {health && !health.aiProvider && (
+              <div className="banner warn">
+                No AI key set. Drawing and manual entry work normally; floor plan tracing and
+                product lookup need a key in <code>.env</code> — see <code>.env.example</code> —
+                then restart the server.
+              </div>
+            )}
+            {health?.aiProvider && (
+              <div className="banner ok">AI provider: {health.aiProvider}</div>
+            )}
+            {!health && (
+              <div className="banner error">
+                Can’t reach the API server on <code>:8787</code>. Is <code>npm run dev</code>{' '}
+                running?
+              </div>
+            )}
+            {loadError && <div className="banner error">{loadError}</div>}
+
+            <div className="project-list">
+              {projects.length === 0 && <span className="muted">No rooms yet.</span>}
+              {projects.map((p) => (
+                <div key={p.id} className="project-row" aria-current={p.id === project?.id}>
+                  {renaming?.id === p.id ? (
+                    <input
+                      className="row-rename"
+                      autoFocus
+                      value={renaming.value}
+                      aria-label={`Rename ${p.name}`}
+                      onChange={(e) => setRenaming({ id: p.id, value: e.target.value })}
+                      onBlur={() => void commitRename()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') void commitRename();
+                        if (e.key === 'Escape') setRenaming(null);
+                      }}
+                    />
+                  ) : (
+                    <button className="project-open" onClick={() => void loadProject(p.id)}>
+                      <span>{p.name}</span>
+                      <span className="meta">{p.itemCount} items</span>
                     </button>
-                    <button className="linky" onClick={() => setConfirmDelete(null)}>
-                      Cancel
-                    </button>
-                  </>
-                ) : (
-                  renaming?.id !== p.id && (
+                  )}
+
+                  {confirmDelete === p.id ? (
                     <>
                       <button
-                        className="row-x"
-                        aria-label={`Rename ${p.name}`}
-                        title="Rename this room"
-                        onClick={() => setRenaming({ id: p.id, value: p.name })}
+                        className="linky danger"
+                        onClick={() => void handleDelete(p.id)}
+                        title={`Permanently delete ${p.name}`}
                       >
-                        ✎
+                        Delete
                       </button>
-                      <button
-                        className="row-x"
-                        aria-label={`Delete ${p.name}`}
-                        title="Delete this room"
-                        onClick={() => setConfirmDelete(p.id)}
-                      >
-                        ✕
+                      <button className="linky" onClick={() => setConfirmDelete(null)}>
+                        Cancel
                       </button>
                     </>
-                  )
-                )}
-              </div>
-            ))}
-          </div>
-
-          <LibraryPanel />
-        </aside>
-
-        <main className="stage">
-          {!project ? (
-            <div className="empty">
-              <h1>No room open</h1>
-              <p>
-                Create a room to start drawing walls, or open one from the list on
-                the left. Everything is stored as JSON on your machine.
-              </p>
-              <button className="primary" onClick={handleNew} style={{ marginTop: 6 }}>
-                New room
-              </button>
-            </div>
-          ) : (
-            <>
-              <PlanCanvas onEditWallLength={(wallId) => select([wallId])} />
-              {project.room.walls.length === 0 && (
-                <div className="canvas-empty">
-                  <b>Empty plan.</b> Pick the <b>Wall</b> tool and click to place corners, or use{' '}
-                  <b>Quick room…</b> on the right for a rectangle.
+                  ) : (
+                    renaming?.id !== p.id && (
+                      <>
+                        <button
+                          className="row-x"
+                          aria-label={`Rename ${p.name}`}
+                          title="Rename this room"
+                          onClick={() => setRenaming({ id: p.id, value: p.name })}
+                        >
+                          ✎
+                        </button>
+                        <button
+                          className="row-x"
+                          aria-label={`Delete ${p.name}`}
+                          title="Delete this room"
+                          onClick={() => setConfirmDelete(p.id)}
+                        >
+                          ✕
+                        </button>
+                      </>
+                    )
+                  )}
                 </div>
-              )}
-            </>
-          )}
-        </main>
+              ))}
+            </div>
 
-        {/*
+            <LibraryPanel />
+          </aside>
+
+          <main className="stage">
+            {!project ? (
+              <div className="empty">
+                <h1>No room open</h1>
+                <p>
+                  Create a room to start drawing walls, or open one from the list on the left.
+                  Everything is stored as JSON on your machine.
+                </p>
+                <button className="primary" onClick={handleNew} style={{ marginTop: 6 }}>
+                  New room
+                </button>
+              </div>
+            ) : (
+              <>
+                <PlanCanvas onEditWallLength={(wallId) => select([wallId])} />
+                {project.room.walls.length === 0 && (
+                  <div className="canvas-empty">
+                    <b>Empty plan.</b> Pick the <b>Wall</b> tool and click to place corners, or
+                    use <b>Quick room…</b> on the right for a rectangle.
+                  </div>
+                )}
+              </>
+            )}
+          </main>
+
+          {/*
           One aside, two panels. Selecting furniture should answer questions
           about that piece, not about the room it sits in.
         */}
-        <aside className="panel right">
-          {selection.some((id) => idKind(id) === 'item') ? <ItemPanel /> : <RoomPanel />}
-        </aside>
+          <aside className="panel right">
+            {selection.some((id) => idKind(id) === 'item') ? <ItemPanel /> : <RoomPanel />}
+          </aside>
+        </div>
+
+        <footer className="statusbar">
+          <span className="save-dot" data-state={saveState}>
+            {saveError ?? SAVE_LABEL[saveState]}
+          </span>
+          {project && (
+            <>
+              <span>Units: {units === 'imperial' ? 'ft-in' : 'metric'}</span>
+              <span>Grid: {formatLength(project.settings.gridStep, units)}</span>
+              <span>Zoom: {Math.round(scale * 1000) / 10}%</span>
+
+              <button
+                className={conflicts.length ? 'conflict-chip bad' : 'conflict-chip'}
+                disabled={conflicts.length === 0}
+                title={
+                  conflicts.length
+                    ? 'Click to step through each problem'
+                    : 'Nothing overlaps and every clearance is satisfied'
+                }
+                onClick={() => {
+                  const conflict = nextConflict();
+                  // Selecting the pieces involved is what makes the tally
+                  // actionable — otherwise you're told there's a problem and left
+                  // to hunt for it.
+                  if (conflict) select(conflict.itemIds);
+                }}
+              >
+                {summarize(conflicts)}
+              </button>
+
+              <span className="spacer" />
+              <span>{past.length} undo steps</span>
+            </>
+          )}
+        </footer>
       </div>
-
-      <footer className="statusbar">
-        <span className="save-dot" data-state={saveState}>
-          {saveError ?? SAVE_LABEL[saveState]}
-        </span>
-        {project && (
-          <>
-            <span>Units: {units === 'imperial' ? 'ft-in' : 'metric'}</span>
-            <span>Grid: {formatLength(project.settings.gridStep, units)}</span>
-            <span>Zoom: {Math.round(scale * 1000) / 10}%</span>
-
-            <button
-              className={conflicts.length ? 'conflict-chip bad' : 'conflict-chip'}
-              disabled={conflicts.length === 0}
-              title={
-                conflicts.length
-                  ? 'Click to step through each problem'
-                  : 'Nothing overlaps and every clearance is satisfied'
-              }
-              onClick={() => {
-                const conflict = nextConflict();
-                // Selecting the pieces involved is what makes the tally
-                // actionable — otherwise you're told there's a problem and left
-                // to hunt for it.
-                if (conflict) select(conflict.itemIds);
-              }}
-            >
-              {summarize(conflicts)}
-            </button>
-
-            <span className="spacer" />
-            <span>{past.length} undo steps</span>
-          </>
-        )}
-      </footer>
-    </div>
     </>
   );
 }

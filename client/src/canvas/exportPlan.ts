@@ -113,6 +113,10 @@ export function downloadText(text: string, filename: string, mime = 'text/csv'):
 
 /** A filename that won't need quoting and says which room it came from. */
 export function safeFilename(name: string, extension: string): string {
-  const base = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const base = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
   return `${base || 'room'}.${extension}`;
 }

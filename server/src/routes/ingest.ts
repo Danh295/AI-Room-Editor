@@ -37,18 +37,21 @@ const PRODUCT_SCHEMA = {
     seatHeightMm: { type: 'number' },
     statedDimensions: {
       type: 'string',
-      description: 'The dimensions exactly as the source wrote them, e.g. "90 1/2 x 37 3/8 x 32 5/8 inches"',
+      description:
+        'The dimensions exactly as the source wrote them, e.g. "90 1/2 x 37 3/8 x 32 5/8 inches"',
     },
     price: { type: 'number' },
     currency: { type: 'string' },
     colorHex: { type: 'string', description: 'Approximate main colour as #rrggbb' },
     colorLabel: {
       type: 'string',
-      description: 'Colour/finish name. Infer from the product name or URL when stated there, e.g. "Tibbleby beige-gray".',
+      description:
+        'Colour/finish name. Infer from the product name or URL when stated there, e.g. "Tibbleby beige-gray".',
     },
     imageUrl: {
       type: 'string',
-      description: 'Direct URL to a product photo, only if one appeared in the research notes. Omit rather than guess.',
+      description:
+        'Direct URL to a product photo, only if one appeared in the research notes. Omit rather than guess.',
     },
     shape: { type: 'string', enum: ['rect', 'L'] },
     confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
@@ -131,7 +134,12 @@ ${research}`;
 // ------------------------------------------------------------- utilities ---
 
 /** Wrap a value with its confidence and source for the review card. */
-function sourced<T>(value: T, confidence: Confidence, citedText?: string, sourceUrl?: string): Sourced<T> {
+function sourced<T>(
+  value: T,
+  confidence: Confidence,
+  citedText?: string,
+  sourceUrl?: string,
+): Sourced<T> {
   return { value, confidence, citedText, sourceUrl };
 }
 
@@ -148,12 +156,18 @@ function sanityWarnings(p: ExtractedProduct): string[] {
     ['height', p.heightMm],
   ] as const) {
     if (!plausibleMm(value)) {
-      out.push(`The ${label} (${value}mm) is outside a believable range — check it before saving.`);
+      out.push(
+        `The ${label} (${value}mm) is outside a believable range — check it before saving.`,
+      );
     }
   }
   // A classic unit-conversion failure: inches left unconverted look like a
   // doll's-house sofa.
-  if (plausibleMm(p.widthMm) && p.widthMm < 200 && /sofa|bed|table|dresser/.test(p.subcategoryId)) {
+  if (
+    plausibleMm(p.widthMm) &&
+    p.widthMm < 200 &&
+    /sofa|bed|table|dresser/.test(p.subcategoryId)
+  ) {
     out.push('These numbers look like inches that were never converted to millimetres.');
   }
   return out;
@@ -203,9 +217,10 @@ ingestRouter.post('/product', async (req, res) => {
         // Client-rendered storefronts serve a shell with a generic title
         // ("Products") and an empty og:image. Passing that to the model as a
         // hint is worse than passing nothing.
-        pageTitle = meta.title && meta.title.length > 3 && !/^products?$/i.test(meta.title)
-          ? meta.title
-          : undefined;
+        pageTitle =
+          meta.title && meta.title.length > 3 && !/^products?$/i.test(meta.title)
+            ? meta.title
+            : undefined;
       } catch {
         // A page that won't load is not fatal — the search can still find it.
       }
@@ -213,12 +228,18 @@ ingestRouter.post('/product', async (req, res) => {
 
     const image =
       method === 'photo' && body.imageBase64
-        ? { base64: body.imageBase64.replace(/^data:[^,]+,/, ''), mimeType: body.mimeType ?? 'image/jpeg' }
+        ? {
+            base64: body.imageBase64.replace(/^data:[^,]+,/, ''),
+            mimeType: body.mimeType ?? 'image/jpeg',
+          }
         : undefined;
 
     // Call 1: web-grounded research, free-form.
     const research = await provider.research({
-      prompt: researchPrompt(method, pageTitle ? `${detail}\n(page title: ${pageTitle})` : detail),
+      prompt: researchPrompt(
+        method,
+        pageTitle ? `${detail}\n(page title: ${pageTitle})` : detail,
+      ),
       image,
     });
 
@@ -258,20 +279,38 @@ ingestRouter.post('/product', async (req, res) => {
       warnings.push('No product photo found — you can add one in the form below.');
     }
 
-
     const draft: ProductDraft = {
       name: sourced(extracted.name, confidence, undefined, primary?.url),
       brand: extracted.brand ? sourced(extracted.brand, confidence) : undefined,
-      modelNumber: extracted.modelNumber ? sourced(extracted.modelNumber, confidence) : undefined,
+      modelNumber: extracted.modelNumber
+        ? sourced(extracted.modelNumber, confidence)
+        : undefined,
       categoryId: sourced(categoryId, found ? 'high' : 'low'),
       subcategoryId: sourced(subcategoryId, found ? 'high' : 'low'),
-      w: sourced(Math.round(extracted.widthMm), confidence, extracted.statedDimensions, primary?.url),
-      d: sourced(Math.round(extracted.depthMm), confidence, extracted.statedDimensions, primary?.url),
-      h: sourced(Math.round(extracted.heightMm), confidence, extracted.statedDimensions, primary?.url),
+      w: sourced(
+        Math.round(extracted.widthMm),
+        confidence,
+        extracted.statedDimensions,
+        primary?.url,
+      ),
+      d: sourced(
+        Math.round(extracted.depthMm),
+        confidence,
+        extracted.statedDimensions,
+        primary?.url,
+      ),
+      h: sourced(
+        Math.round(extracted.heightMm),
+        confidence,
+        extracted.statedDimensions,
+        primary?.url,
+      ),
       seatHeight: extracted.seatHeightMm
         ? sourced(Math.round(extracted.seatHeightMm), confidence)
         : undefined,
-      price: extracted.price ? sourced(extracted.price, confidence, undefined, primary?.url) : undefined,
+      price: extracted.price
+        ? sourced(extracted.price, confidence, undefined, primary?.url)
+        : undefined,
       currency: extracted.currency,
       footprint:
         extracted.shape === 'L'
@@ -348,7 +387,10 @@ const FLOORPLAN_SCHEMA = {
       items: { type: 'string' },
       description: 'Dimension labels printed on the drawing, exactly as written',
     },
-    scaleMmPerPx: { type: 'number', description: 'Omit entirely if no printed dimension is legible' },
+    scaleMmPerPx: {
+      type: 'number',
+      description: 'Omit entirely if no printed dimension is legible',
+    },
     confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
     warnings: { type: 'array', items: { type: 'string' } },
   },
@@ -399,7 +441,10 @@ ingestRouter.post('/floorplan', async (req, res) => {
   try {
     // One call: vision plus a schema, with no tools involved, which Gemini
     // accepts. There is nothing to search for here — the answer is in the pixels.
-    const image = { base64: imageBase64.replace(/^data:[^,]+,/, ''), mimeType: mimeType ?? 'image/png' };
+    const image = {
+      base64: imageBase64.replace(/^data:[^,]+,/, ''),
+      mimeType: mimeType ?? 'image/png',
+    };
     const prompt = floorplanPrompt(width, height);
 
     type Trace = {
@@ -416,7 +461,12 @@ ingestRouter.post('/floorplan', async (req, res) => {
 
     let result: Trace;
     try {
-      result = await provider.extract<Trace>({ prompt, schema, image, model: provider.visionModel });
+      result = await provider.extract<Trace>({
+        prompt,
+        schema,
+        image,
+        model: provider.visionModel,
+      });
     } catch (err) {
       // The accurate vision model has a tighter free-tier quota. Falling back
       // beats failing outright, but the user has to be told the trace just got
@@ -437,10 +487,14 @@ ingestRouter.post('/floorplan', async (req, res) => {
 
     const warnings = [...degraded, ...(result.warnings ?? [])];
     if (polygon.length < 3) {
-      warnings.push('Could not make out a closed room outline. Draw the walls by hand instead.');
+      warnings.push(
+        'Could not make out a closed room outline. Draw the walls by hand instead.',
+      );
     }
     if (!result.scaleMmPerPx) {
-      warnings.push('No usable scale found — set it by clicking two points a known distance apart.');
+      warnings.push(
+        'No usable scale found — set it by clicking two points a known distance apart.',
+      );
     }
     /*
       Be specific about how wrong this can be.
@@ -475,4 +529,3 @@ ingestRouter.post('/floorplan', async (req, res) => {
     return res.status(500).json({ error: (err as Error).message });
   }
 });
-

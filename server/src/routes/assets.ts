@@ -70,11 +70,14 @@ assetsRouter.post('/upload', async (req, res) => {
   }
 
   // Accept a full data: URL as well as a bare base64 payload.
-  const payload = dataBase64.includes(',') ? dataBase64.slice(dataBase64.indexOf(',') + 1) : dataBase64;
+  const payload = dataBase64.includes(',')
+    ? dataBase64.slice(dataBase64.indexOf(',') + 1)
+    : dataBase64;
   const buffer = Buffer.from(payload, 'base64');
 
   if (buffer.length === 0) return res.status(400).json({ error: 'empty image' });
-  if (buffer.length > MAX_DOWNLOAD_BYTES) return res.status(413).json({ error: 'image too large' });
+  if (buffer.length > MAX_DOWNLOAD_BYTES)
+    return res.status(413).json({ error: 'image too large' });
 
   try {
     return res.json(await storeImage(buffer));
@@ -98,8 +101,6 @@ assetsRouter.get('/:assetId', async (req, res) => {
     return res.status(404).json({ error: 'not found' });
   }
 });
-
-
 
 /**
  * Download an image by URL and cache it, reusing the same guards and

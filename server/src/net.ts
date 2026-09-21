@@ -107,11 +107,7 @@ function isRedirect(status: number): boolean {
   return status === 301 || status === 302 || status === 303 || status === 307 || status === 308;
 }
 
-async function fetchOnce(
-  url: URL,
-  init: RequestInit,
-  timeoutMs: number,
-): Promise<Response> {
+async function fetchOnce(url: URL, init: RequestInit, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {

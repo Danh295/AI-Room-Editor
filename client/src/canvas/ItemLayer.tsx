@@ -29,7 +29,12 @@ function GlyphStroke({
   // Glyph y=0 is the front (local -Y), y=1 the back (local +Y).
   const mapX = (nx: number) => nx * w - w / 2;
   const mapY = (ny: number) => ny * d - d / 2;
-  const common = { stroke: color, strokeWidth: width, listening: false, perfectDrawEnabled: false };
+  const common = {
+    stroke: color,
+    strokeWidth: width,
+    listening: false,
+    perfectDrawEnabled: false,
+  };
 
   switch (stroke.kind) {
     case 'line':
@@ -147,7 +152,8 @@ function PlacedFurniture({
   const inv = 1 / vp.scale;
   const image = useAssetImage(
     renderMode !== 'icon'
-      ? item?.variants.find((v) => v.id === placed.variantId)?.imageAssetId ?? item?.imageAssetId
+      ? (item?.variants.find((v) => v.id === placed.variantId)?.imageAssetId ??
+          item?.imageAssetId)
       : undefined,
   );
 
@@ -329,7 +335,10 @@ function PlacedFurniture({
                 const clamp = (v: number) => Math.min(1, Math.max(0, v));
                 const next = outline.map((p, i) =>
                   i === index
-                    ? { x: clamp((e.target.x() + w / 2) / w), y: clamp((e.target.y() + d / 2) / d) }
+                    ? {
+                        x: clamp((e.target.x() + w / 2) / w),
+                        y: clamp((e.target.y() + d / 2) / d),
+                      }
                     : { x: clamp((p.x + w / 2) / w), y: clamp((p.y + d / 2) / d) },
                 );
                 onShape(placed.id, next);
@@ -344,7 +353,14 @@ function PlacedFurniture({
       )}
 
       {placed.locked && (
-        <Circle x={0} y={0} radius={5 * inv} fill="#0d0f13" stroke="#949aa6" strokeWidth={1 * inv} />
+        <Circle
+          x={0}
+          y={0}
+          radius={5 * inv}
+          fill="#0d0f13"
+          stroke="#949aa6"
+          strokeWidth={1 * inv}
+        />
       )}
 
       {/* Name and size, counter-rotated so they stay readable at any angle. */}

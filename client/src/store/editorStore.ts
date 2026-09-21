@@ -1,7 +1,14 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
 import type { LibraryItem, PlacedItem, Project, ProjectSettings, Pt } from '@room/shared';
-import { createProject, appendWall, startChain, closeChain, placeItem, newId } from '@room/shared';
+import {
+  createProject,
+  appendWall,
+  startChain,
+  closeChain,
+  placeItem,
+  newId,
+} from '@room/shared';
 import { api } from '../api.js';
 
 /** Which pointer gesture the canvas is currently interpreting. */
@@ -159,7 +166,8 @@ export const useEditor = create<EditorState>((set, get) => {
   /** Try again after a failure, backing off so a down server isn't hammered. */
   function scheduleRetry() {
     retryTimer = clearTimer(retryTimer);
-    retryDelayMs = retryDelayMs === 0 ? RETRY_BASE_MS : Math.min(retryDelayMs * 2, RETRY_MAX_MS);
+    retryDelayMs =
+      retryDelayMs === 0 ? RETRY_BASE_MS : Math.min(retryDelayMs * 2, RETRY_MAX_MS);
     retryTimer = setTimeout(() => {
       retryTimer = null;
       void get().save();
@@ -332,9 +340,7 @@ export const useEditor = create<EditorState>((set, get) => {
       const index = library.findIndex((i) => i.id === item.id);
       set({
         library:
-          index >= 0
-            ? library.map((i) => (i.id === item.id ? item : i))
-            : [...library, item],
+          index >= 0 ? library.map((i) => (i.id === item.id ? item : i)) : [...library, item],
       });
       try {
         const saved = await api.saveLibraryItem(item);
@@ -428,7 +434,7 @@ export const useEditor = create<EditorState>((set, get) => {
       get().edit((d) => {
         for (const item of d.items) {
           if (!selection.includes(item.id) || item.locked) continue;
-          item.rotation = ((item.rotation + deltaDeg) % 360 + 360) % 360;
+          item.rotation = (((item.rotation + deltaDeg) % 360) + 360) % 360;
         }
       });
     },

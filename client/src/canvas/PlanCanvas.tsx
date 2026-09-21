@@ -69,9 +69,12 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
   const exporting = useExportMode((s) => s.exporting);
   const [snap, setSnap] = useState<SnapResult | null>(null);
   const [shiftHeld, setShiftHeld] = useState(false);
-  const panning = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(
-    null,
-  );
+  const panning = useRef<{
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+  } | null>(null);
 
   const room = project?.room;
   const settings = project?.settings;
@@ -214,7 +217,20 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
       // Select tool: a click on empty canvas clears the selection.
       if (e.target === e.target.getStage()) select([]);
     },
-    [tool, draft, room, settings, resolvePointer, draftStart, draftAdd, draftFinish, edit, select, vp, toleranceMm],
+    [
+      tool,
+      draft,
+      room,
+      settings,
+      resolvePointer,
+      draftStart,
+      draftAdd,
+      draftFinish,
+      edit,
+      select,
+      vp,
+      toleranceMm,
+    ],
   );
 
   const handleMouseMove = useCallback(() => {
@@ -410,8 +426,7 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
 
   if (!project || !room || !settings) return null;
 
-  const cursor =
-    tool === 'wall' ? 'crosshair' : tool === 'select' ? 'default' : 'copy';
+  const cursor = tool === 'wall' ? 'crosshair' : tool === 'select' ? 'default' : 'copy';
 
   return (
     <div
@@ -554,7 +569,9 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
         </div>
       )}
       {(tool === 'door' || tool === 'window') && (
-        <div className="canvas-hint">Click a wall to place a {tool} · <b>Esc</b> to stop</div>
+        <div className="canvas-hint">
+          Click a wall to place a {tool} · <b>Esc</b> to stop
+        </div>
       )}
     </div>
   );

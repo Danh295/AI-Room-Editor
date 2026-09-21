@@ -10,7 +10,8 @@ const MODES: { id: Mode; label: string; placeholder: string; blurb: string }[] =
     id: 'url',
     label: 'Product link',
     placeholder: 'https://www.ikea.com/us/en/p/…',
-    blurb: 'Paste a product page. Most accurate — the lookup cross-checks the maker’s spec sheet.',
+    blurb:
+      'Paste a product page. Most accurate — the lookup cross-checks the maker’s spec sheet.',
   },
   {
     id: 'model',
@@ -28,7 +29,8 @@ const MODES: { id: Mode; label: string; placeholder: string; blurb: string }[] =
     id: 'photo',
     label: 'Photo',
     placeholder: 'optional hint, e.g. “it’s an IKEA sofa”',
-    blurb: 'Identifies the piece, then searches for its real dimensions rather than guessing from pixels.',
+    blurb:
+      'Identifies the piece, then searches for its real dimensions rather than guessing from pixels.',
   },
 ];
 
@@ -192,7 +194,11 @@ export default function IngestDialog({ units, onSave, onClose }: IngestDialogPro
         <div className="dialog-actions">
           <button onClick={() => setFallbackToManual(true)}>Enter manually</button>
           <button onClick={onClose}>Cancel</button>
-          <button className="primary" onClick={() => void lookup()} disabled={!canSubmit || busy}>
+          <button
+            className="primary"
+            onClick={() => void lookup()}
+            disabled={!canSubmit || busy}
+          >
             {busy ? 'Looking up…' : 'Look up'}
           </button>
         </div>

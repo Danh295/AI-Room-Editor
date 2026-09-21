@@ -46,7 +46,13 @@ describe('assertFetchableUrl', () => {
   });
 
   it('rejects literal private and loopback hosts', () => {
-    for (const host of ['localhost', '127.0.0.1', '10.1.2.3', '192.168.0.5', '169.254.169.254']) {
+    for (const host of [
+      'localhost',
+      '127.0.0.1',
+      '10.1.2.3',
+      '192.168.0.5',
+      '169.254.169.254',
+    ]) {
       expect(() => assertFetchableUrl(`http://${host}/`)).toThrow(/local or private/);
     }
   });

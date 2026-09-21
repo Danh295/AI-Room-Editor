@@ -13,9 +13,18 @@ import LengthInput from '../components/LengthInput.js';
 import { api, assetUrl } from '../api.js';
 
 const SWATCHES = [
-  '#8d99ae', '#4a4e69', '#2b2d42', '#d6ccc2',
-  '#b08968', '#7f5539', '#344e41', '#588157',
-  '#9d4edd', '#e07a5f', '#f2cc8f', '#e6e8ec',
+  '#8d99ae',
+  '#4a4e69',
+  '#2b2d42',
+  '#d6ccc2',
+  '#b08968',
+  '#7f5539',
+  '#344e41',
+  '#588157',
+  '#9d4edd',
+  '#e07a5f',
+  '#f2cc8f',
+  '#e6e8ec',
 ];
 
 export interface ItemFormProps {
@@ -27,7 +36,11 @@ export interface ItemFormProps {
   /** An AI lookup result to pre-fill from. Every field stays editable. */
   draft?: ProductDraft | null;
   /** Sources the lookup used, shown so a number can be checked. */
-  research?: { text: string; citations: { title: string; url: string }[]; model: string } | null;
+  research?: {
+    text: string;
+    citations: { title: string; url: string }[];
+    model: string;
+  } | null;
 }
 
 const CONFIDENCE_LABEL: Record<Confidence, string> = {
@@ -89,7 +102,9 @@ export default function ItemForm({
         ? draft.variants
         : [{ id: newId('var'), label: 'Default', hex: SWATCHES[0]! }],
   );
-  const [imageAssetId, setImageAssetId] = useState(existing?.imageAssetId ?? draft?.imageAssetId);
+  const [imageAssetId, setImageAssetId] = useState(
+    existing?.imageAssetId ?? draft?.imageAssetId,
+  );
   const [showNotes, setShowNotes] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
@@ -176,13 +191,15 @@ export default function ItemForm({
   return (
     <div className="dialog-backdrop" onMouseDown={onClose}>
       <div className="dialog wide" onMouseDown={(e) => e.stopPropagation()}>
-        <h3>{existing ? 'Edit item' : draft ? 'Confirm before adding' : 'Add item manually'}</h3>
+        <h3>
+          {existing ? 'Edit item' : draft ? 'Confirm before adding' : 'Add item manually'}
+        </h3>
 
         {draft && (
           <div className="review-head">
             <p className="hint" style={{ margin: '0 0 8px' }}>
-              Nothing is saved until you press Add. Every field below is editable —
-              correct anything that looks wrong.
+              Nothing is saved until you press Add. Every field below is editable — correct
+              anything that looks wrong.
             </p>
 
             {draft.warnings.length > 0 && (
@@ -333,7 +350,9 @@ export default function ItemForm({
               aria-label={`Colour ${hex}`}
               onClick={() =>
                 setVariants((vs) =>
-                  vs.length ? [{ ...vs[0]!, hex }, ...vs.slice(1)] : [{ id: newId('var'), label: 'Default', hex }],
+                  vs.length
+                    ? [{ ...vs[0]!, hex }, ...vs.slice(1)]
+                    : [{ id: newId('var'), label: 'Default', hex }],
                 )
               }
             />
@@ -356,7 +375,11 @@ export default function ItemForm({
             />
             {imageBusy && <span className="muted"> uploading…</span>}
             {imageAssetId && (
-              <button className="linky" type="button" onClick={() => setImageAssetId(undefined)}>
+              <button
+                className="linky"
+                type="button"
+                onClick={() => setImageAssetId(undefined)}
+              >
                 Remove
               </button>
             )}
@@ -375,7 +398,9 @@ export default function ItemForm({
             className="primary"
             onClick={save}
             disabled={!nameOk || !dimsOk}
-            title={!nameOk ? 'A name is required' : !dimsOk ? 'Dimensions must be positive' : ''}
+            title={
+              !nameOk ? 'A name is required' : !dimsOk ? 'Dimensions must be positive' : ''
+            }
           >
             {existing ? 'Save changes' : 'Add to library'}
           </button>

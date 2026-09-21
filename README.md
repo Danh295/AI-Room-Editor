@@ -52,12 +52,12 @@ Both bind to loopback on purpose. **This app has no authentication of any
 kind** — anyone who can reach the port can read and overwrite every project.
 Set `HOST=0.0.0.0` only behind something that asks who you are.
 
-| Variable | Default | What it does |
-|---|---|---|
-| `GEMINI_API_KEY` | — | Enables AI lookup and floor plan tracing |
-| `PORT` | `8787` | Port to listen on |
-| `HOST` | `127.0.0.1` | Interface to bind |
-| `ROOM_DATA_DIR` | `<repo>/data` | Where projects, library, and images live |
+| Variable         | Default       | What it does                             |
+| ---------------- | ------------- | ---------------------------------------- |
+| `GEMINI_API_KEY` | —             | Enables AI lookup and floor plan tracing |
+| `PORT`           | `8787`        | Port to listen on                        |
+| `HOST`           | `127.0.0.1`   | Interface to bind                        |
+| `ROOM_DATA_DIR`  | `<repo>/data` | Where projects, library, and images live |
 
 ## Roadmap
 
@@ -79,12 +79,12 @@ An Anthropic provider is sketched in the provider interface but not implemented;
 
 ## Architecture
 
-| | |
-|---|---|
-| `client/` | React + TypeScript + Vite. 2D plan on react-konva. |
+|           |                                                                                                                                               |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `client/` | React + TypeScript + Vite. 2D plan on react-konva.                                                                                            |
 | `server/` | Express on `:8787`. Proxies Gemini, fetches and caches product images, reads/writes project files, and serves the built client in production. |
-| `shared/` | Types plus pure logic used by both sides: unit parsing/formatting, geometry, collision, cost rollup, the furniture taxonomy. |
-| `data/` | Your projects, library, and cached images. Gitignored, apart from the starter library in `data/seed/`. |
+| `shared/` | Types plus pure logic used by both sides: unit parsing/formatting, geometry, collision, cost rollup, the furniture taxonomy.                  |
+| `data/`   | Your projects, library, and cached images. Gitignored, apart from the starter library in `data/seed/`.                                        |
 
 All dimensions are stored internally as integer **millimeters**; imperial or
 metric is purely a display and input concern.

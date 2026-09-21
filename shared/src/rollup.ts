@@ -62,10 +62,7 @@ function priceOf(placed: PlacedItem, item: LibraryItem): number | null {
  * than dropped: a plan that silently costs less because an entry was deleted is
  * worse than one that says it doesn't know.
  */
-export function rollUpCost(
-  items: PlacedItem[],
-  library: Map<string, LibraryItem>,
-): CostRollup {
+export function rollUpCost(items: PlacedItem[], library: Map<string, LibraryItem>): CostRollup {
   const lines = new Map<string, CostLine>();
   const currencies = new Set<string>();
   let total = 0;
@@ -143,8 +140,7 @@ export function rollUpCost(
 /** Human label for a category id, falling back to the id itself. */
 function categoryLabel(categoryId: string): string {
   return (
-    findCategory(categoryId)?.label ??
-    categoryId.charAt(0).toUpperCase() + categoryId.slice(1)
+    findCategory(categoryId)?.label ?? categoryId.charAt(0).toUpperCase() + categoryId.slice(1)
   );
 }
 
@@ -162,7 +158,9 @@ function csvField(value: string | number | null | undefined): string {
  * so a total pasted into a budget can't lose the caveat on the way.
  */
 export function rollupToCsv(rollup: CostRollup): string {
-  const rows: string[] = [['Item', 'Variant', 'Category', 'Qty', 'Unit price', 'Line total'].join(',')];
+  const rows: string[] = [
+    ['Item', 'Variant', 'Category', 'Qty', 'Unit price', 'Line total'].join(','),
+  ];
 
   for (const line of rollup.lines) {
     rows.push(
@@ -178,15 +176,24 @@ export function rollupToCsv(rollup: CostRollup): string {
   }
 
   rows.push('');
-  rows.push([csvField('Total'), '', '', csvField(rollup.itemCount), '', csvField(rollup.total)].join(','));
+  rows.push(
+    [csvField('Total'), '', '', csvField(rollup.itemCount), '', csvField(rollup.total)].join(
+      ',',
+    ),
+  );
   if (rollup.currency) rows.push([csvField('Currency'), csvField(rollup.currency)].join(','));
   if (rollup.unpricedCount > 0) {
     rows.push(
-      [csvField('Not included'), csvField(`${rollup.unpricedCount} placement(s) with no price`)].join(','),
+      [
+        csvField('Not included'),
+        csvField(`${rollup.unpricedCount} placement(s) with no price`),
+      ].join(','),
     );
   }
   if (rollup.mixedCurrencies) {
-    rows.push([csvField('Warning'), csvField('Prices were in more than one currency')].join(','));
+    rows.push(
+      [csvField('Warning'), csvField('Prices were in more than one currency')].join(','),
+    );
   }
 
   return `${rows.join('\n')}\n`;

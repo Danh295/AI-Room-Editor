@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  parseLength,
-  formatLength,
-  formatArea,
-  MM_PER_INCH,
-  MM_PER_FOOT,
-} from './units.js';
+import { parseLength, formatLength, formatArea, MM_PER_INCH, MM_PER_FOOT } from './units.js';
 
 describe('parseLength — imperial input', () => {
   it('reads feet-and-inches with a prime and a double prime', () => {
@@ -177,15 +171,12 @@ describe('formatLength — edge cases', () => {
 describe('round trips', () => {
   // The property that matters: what we render, we can read back to the same
   // stored value (within imperial's 1/8" quantization).
-  it.each([0, 1000, 2438, 3759, 3772, 5000, 12_700])(
-    'imperial round trip for %imm',
-    (mm) => {
-      const text = formatLength(mm, 'imperial');
-      const back = parseLength(text, 'imperial');
-      expect(back).not.toBeNull();
-      expect(Math.abs(back! - mm)).toBeLessThanOrEqual(Math.ceil(MM_PER_INCH / 8));
-    },
-  );
+  it.each([0, 1000, 2438, 3759, 3772, 5000, 12_700])('imperial round trip for %imm', (mm) => {
+    const text = formatLength(mm, 'imperial');
+    const back = parseLength(text, 'imperial');
+    expect(back).not.toBeNull();
+    expect(Math.abs(back! - mm)).toBeLessThanOrEqual(Math.ceil(MM_PER_INCH / 8));
+  });
 
   it.each([0, 750, 1000, 2500, 3759, 12_700])('metric round trip for %imm', (mm) => {
     const text = formatLength(mm, 'metric');

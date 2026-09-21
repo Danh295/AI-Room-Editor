@@ -176,8 +176,8 @@ function SingleItem({ placed, item }: { placed: PlacedItem; item: LibraryItem | 
       <>
         <h2>Missing item</h2>
         <div className="banner error">
-          The library entry this placement points to is gone. Delete it, or re-add the
-          product to the library with the same id.
+          The library entry this placement points to is gone. Delete it, or re-add the product
+          to the library with the same id.
         </div>
         <div className="button-row">
           <button className="danger" onClick={() => removePlacement(placed.id)}>
@@ -196,7 +196,9 @@ function SingleItem({ placed, item }: { placed: PlacedItem; item: LibraryItem | 
 
   /** Wrap into [0,360) the way `rotateSelection` does. */
   function rotateBy(deltaDeg: number) {
-    updatePlacement(placed.id, { rotation: (((placed.rotation + deltaDeg) % 360) + 360) % 360 });
+    updatePlacement(placed.id, {
+      rotation: (((placed.rotation + deltaDeg) % 360) + 360) % 360,
+    });
   }
 
   /** Patch one clearance side, leaving the other overrides alone. */
@@ -232,8 +234,8 @@ function SingleItem({ placed, item }: { placed: PlacedItem; item: LibraryItem | 
         <button onClick={() => setEditProduct(true)}>Edit product…</button>
       </div>
       <p className="hint">
-        “Edit product” changes the library entry and every placement of it. The fields
-        below change only this one.
+        “Edit product” changes the library entry and every placement of it. The fields below
+        change only this one.
       </p>
 
       {locked && (
@@ -366,7 +368,9 @@ function SingleItem({ placed, item }: { placed: PlacedItem; item: LibraryItem | 
                 key={v.id}
                 type="button"
                 className={
-                  (placed.variantId ?? item.variants[0]?.id) === v.id ? 'swatch active' : 'swatch'
+                  (placed.variantId ?? item.variants[0]?.id) === v.id
+                    ? 'swatch active'
+                    : 'swatch'
                 }
                 style={{ background: v.hex }}
                 disabled={locked}
@@ -415,8 +419,8 @@ function SingleItem({ placed, item }: { placed: PlacedItem; item: LibraryItem | 
 
       {footprint.kind === 'poly' && (
         <p className="hint">
-          Drag the points on the plan to reshape this outline. It belongs to this
-          placement only — pick <b>Rectangle</b> above to start over.
+          Drag the points on the plan to reshape this outline. It belongs to this placement only
+          — pick <b>Rectangle</b> above to start over.
         </p>
       )}
 
@@ -435,7 +439,10 @@ function SingleItem({ placed, item }: { placed: PlacedItem; item: LibraryItem | 
             disabled={locked}
             onCommit={(mm) =>
               updatePlacement(placed.id, {
-                footprint: { ...footprint, notchW: Math.min(Math.max(mm / size.w, 0.01), 0.99) },
+                footprint: {
+                  ...footprint,
+                  notchW: Math.min(Math.max(mm / size.w, 0.01), 0.99),
+                },
               })
             }
             onRevert={() => undefined}
@@ -448,7 +455,10 @@ function SingleItem({ placed, item }: { placed: PlacedItem; item: LibraryItem | 
             disabled={locked}
             onCommit={(mm) =>
               updatePlacement(placed.id, {
-                footprint: { ...footprint, notchD: Math.min(Math.max(mm / size.d, 0.01), 0.99) },
+                footprint: {
+                  ...footprint,
+                  notchD: Math.min(Math.max(mm / size.d, 0.01), 0.99),
+                },
               })
             }
             onRevert={() => undefined}

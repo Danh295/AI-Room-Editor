@@ -540,7 +540,7 @@ export const ALL_SUBCATEGORY_IDS: string[] = TAXONOMY.flatMap((c) =>
 
 /** A compact `category/subcategory` listing for the extraction prompt. */
 export function taxonomyPromptList(): string {
-  return TAXONOMY.map(
-    (c) => `${c.id}: ${c.subcategories.map((s) => s.id).join(', ')}`,
-  ).join('\n');
+  return TAXONOMY.map((c) => `${c.id}: ${c.subcategories.map((s) => s.id).join(', ')}`).join(
+    '\n',
+  );
 }

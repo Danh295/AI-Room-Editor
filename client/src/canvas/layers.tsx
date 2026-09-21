@@ -75,7 +75,8 @@ export function GridLayer({ vp, step }: GridProps) {
         for (let x = startX; x <= rect.maxX; x += effective) {
           const isMajor = Math.round(x / effective) % majorEvery === 0;
           ctx.beginPath();
-          ctx.strokeStyle = x === 0 ? COLORS.axis : isMajor ? COLORS.gridMajor : COLORS.gridMinor;
+          ctx.strokeStyle =
+            x === 0 ? COLORS.axis : isMajor ? COLORS.gridMajor : COLORS.gridMinor;
           ctx.moveTo(x, rect.minY);
           ctx.lineTo(x, rect.maxY);
           ctx.stroke();
@@ -84,7 +85,8 @@ export function GridLayer({ vp, step }: GridProps) {
         for (let y = startY; y <= rect.maxY; y += effective) {
           const isMajor = Math.round(y / effective) % majorEvery === 0;
           ctx.beginPath();
-          ctx.strokeStyle = y === 0 ? COLORS.axis : isMajor ? COLORS.gridMajor : COLORS.gridMinor;
+          ctx.strokeStyle =
+            y === 0 ? COLORS.axis : isMajor ? COLORS.gridMajor : COLORS.gridMinor;
           ctx.moveTo(rect.minX, y);
           ctx.lineTo(rect.maxX, y);
           ctx.stroke();
@@ -219,7 +221,14 @@ interface VertexProps {
   onDragEnd: () => void;
 }
 
-export function VertexLayer({ room, vp, selection, onDragStart, onDragMove, onDragEnd }: VertexProps) {
+export function VertexLayer({
+  room,
+  vp,
+  selection,
+  onDragStart,
+  onDragMove,
+  onDragEnd,
+}: VertexProps) {
   const inv = inverse(vp.scale);
   const radius = 4.5 * inv;
 
@@ -338,13 +347,10 @@ export function OpeningLayer({ room, vp, selection, onClick }: OpeningProps) {
                 const hinge = hingeAtA ? start : end;
                 const closed = hingeAtA ? dir : vscale(dir, -1);
                 const sweep = opening.swing?.angle ?? 90;
-                const openSide =
-                  opening.swing?.into === 'out' ? vscale(inward, -1) : inward;
+                const openSide = opening.swing?.into === 'out' ? vscale(inward, -1) : inward;
 
                 const clockwise = cross(closed, openSide) > 0;
-                const rotation = clockwise
-                  ? angleOf(closed)
-                  : angleOf(closed) - sweep;
+                const rotation = clockwise ? angleOf(closed) : angleOf(closed) - sweep;
 
                 const leafEnd = add(
                   hinge,
@@ -463,7 +469,7 @@ export function DimensionLayer({ room, vp, units }: DimensionProps) {
               fontSize={fontSize}
               fill={COLORS.dimensionText}
               rotation={rotation}
-              offsetX={(label.length * fontSize * 0.28)}
+              offsetX={label.length * fontSize * 0.28}
               offsetY={fontSize * 1.4}
               perfectDrawEnabled={false}
             />
@@ -541,7 +547,15 @@ export function DraftLayer({ points, hover, vp, units, thickness, willClose }: D
 
 // ------------------------------------------------------------ snap marker ---
 
-export function SnapMarker({ point, vp, kind }: { point: Pt | null; vp: ViewportState; kind: string }) {
+export function SnapMarker({
+  point,
+  vp,
+  kind,
+}: {
+  point: Pt | null;
+  vp: ViewportState;
+  kind: string;
+}) {
   if (!point || kind === 'free' || kind === 'grid') return null;
   const inv = inverse(vp.scale);
   const size = 7 * inv;

@@ -1,20 +1,12 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [
-    "react",
-    "typescript",
-    "oxc"
-  ],
+  "plugins": ["react", "typescript", "oxc"],
   "env": {
     "browser": true,
     "node": true,
     "es2024": true
   },
-  "ignorePatterns": [
-    "**/dist/**",
-    "node_modules/**",
-    "data/**"
-  ],
+  "ignorePatterns": ["**/dist/**", "node_modules/**", "data/**"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn",

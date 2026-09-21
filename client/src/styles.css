@@ -32,7 +32,12 @@ body,
 body {
   background: var(--bg);
   color: var(--text);
-  font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font:
+    13px/1.45 ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
   overflow: hidden;
 }
 
@@ -162,21 +167,21 @@ select:focus {
 }
 
 .save-dot::before {
-  content: "";
+  content: '';
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--muted);
 }
 
-.save-dot[data-state="saved"]::before {
+.save-dot[data-state='saved']::before {
   background: var(--ok);
 }
-.save-dot[data-state="dirty"]::before,
-.save-dot[data-state="saving"]::before {
+.save-dot[data-state='dirty']::before,
+.save-dot[data-state='saving']::before {
   background: var(--warn);
 }
-.save-dot[data-state="error"]::before {
+.save-dot[data-state='error']::before {
   background: var(--danger);
 }
 
@@ -202,7 +207,7 @@ select:focus {
   background: var(--panel-2);
 }
 
-.project-row[aria-current="true"] {
+.project-row[aria-current='true'] {
   background: var(--panel-2);
   border-color: var(--accent-dim);
 }
@@ -248,7 +253,11 @@ select:focus {
 }
 
 .kbd {
-  font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+  font:
+    11px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
   background: var(--panel-2);
   border: 1px solid var(--line);
   border-bottom-width: 2px;
@@ -703,7 +712,11 @@ button.linky:hover:not(:disabled) {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 8px 10px;
-  font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font:
+    11px/1.5 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
   white-space: pre-wrap;
   color: var(--muted);
   margin: 6px 0 0;

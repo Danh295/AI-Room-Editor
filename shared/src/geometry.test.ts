@@ -25,7 +25,8 @@ import {
 import { rectangularRoom, lShapedRoom, emptyRoom } from './factory.js';
 import { MM_PER_FOOT } from './units.js';
 
-const near = (a: number, b: number, tol = 1e-6) => expect(Math.abs(a - b)).toBeLessThanOrEqual(tol);
+const near = (a: number, b: number, tol = 1e-6) =>
+  expect(Math.abs(a - b)).toBeLessThanOrEqual(tol);
 
 describe('angles', () => {
   // +Y is down, so a positive angle sweeps clockwise on screen.

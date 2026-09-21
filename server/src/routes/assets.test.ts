@@ -49,8 +49,14 @@ describe('POST /api/assets/upload', () => {
 
   it('gives the same id to the same bytes twice', async () => {
     const dataBase64 = await samplePng();
-    const first = await request(app).post('/api/assets/upload').send({ dataBase64 }).expect(200);
-    const second = await request(app).post('/api/assets/upload').send({ dataBase64 }).expect(200);
+    const first = await request(app)
+      .post('/api/assets/upload')
+      .send({ dataBase64 })
+      .expect(200);
+    const second = await request(app)
+      .post('/api/assets/upload')
+      .send({ dataBase64 })
+      .expect(200);
     expect(second.body.assetId).toBe(first.body.assetId);
   });
 
@@ -74,7 +80,9 @@ describe('POST /api/assets/upload', () => {
 
 describe('GET /api/assets/:id', () => {
   it('404s for an id that was never stored', async () => {
-    await request(app).get(`/api/assets/${'a'.repeat(32)}`).expect(404);
+    await request(app)
+      .get(`/api/assets/${'a'.repeat(32)}`)
+      .expect(404);
   });
 
   it('400s for an id that isn’t a plain token', async () => {
@@ -92,7 +100,10 @@ describe('POST /api/assets/fetch', () => {
   });
 
   it('refuses a non-http scheme', async () => {
-    await request(app).post('/api/assets/fetch').send({ url: 'file:///etc/passwd' }).expect(400);
+    await request(app)
+      .post('/api/assets/fetch')
+      .send({ url: 'file:///etc/passwd' })
+      .expect(400);
   });
 
   it('needs a url', async () => {

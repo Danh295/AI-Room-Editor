@@ -89,8 +89,8 @@ function QuickRoom({ onClose }: { onClose: () => void }) {
         {existing && (
           <div className="banner warn">
             This replaces the walls you already have. Undo with{' '}
-            <span className="kbd">Ctrl</span>+<span className="kbd">Z</span> if it isn’t what you
-            wanted.
+            <span className="kbd">Ctrl</span>+<span className="kbd">Z</span> if it isn’t what
+            you wanted.
           </div>
         )}
 
@@ -104,11 +104,21 @@ function QuickRoom({ onClose }: { onClose: () => void }) {
 
         <div className="field-row">
           <label>Width</label>
-          <LengthInput value={width} units={units} onCommit={setWidth} aria-label="Room width" />
+          <LengthInput
+            value={width}
+            units={units}
+            onCommit={setWidth}
+            aria-label="Room width"
+          />
         </div>
         <div className="field-row">
           <label>Length</label>
-          <LengthInput value={depth} units={units} onCommit={setDepth} aria-label="Room length" />
+          <LengthInput
+            value={depth}
+            units={units}
+            onCommit={setDepth}
+            aria-label="Room length"
+          />
         </div>
 
         {shape === 'L' && (
@@ -419,14 +429,14 @@ export default function RoomPanel() {
               than letting a confident number stand in for one. */}
           {cost.unpricedCount > 0 && (
             <p className="hint">
-              {cost.unpricedCount} of {cost.itemCount} placed items have no price, so the
-              total is a floor, not an estimate.
+              {cost.unpricedCount} of {cost.itemCount} placed items have no price, so the total
+              is a floor, not an estimate.
             </p>
           )}
           {cost.mixedCurrencies && (
             <p className="hint warn-text">
-              Prices are in more than one currency — the total adds them as if they were
-              the same.
+              Prices are in more than one currency — the total adds them as if they were the
+              same.
             </p>
           )}
         </>
@@ -470,8 +480,8 @@ export default function RoomPanel() {
         </button>
       </div>
       <p className="hint">
-        The PNG captures the current view, minus the grid and conflict marks — pan and
-        zoom first to frame it.
+        The PNG captures the current view, minus the grid and conflict marks — pan and zoom
+        first to frame it.
       </p>
 
       {quickOpen && <QuickRoom onClose={() => setQuickOpen(false)} />}

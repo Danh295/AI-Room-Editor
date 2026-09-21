@@ -100,7 +100,10 @@ export function localFootprint(footprint: Footprint, w: number, d: number): Pt[]
 }
 
 /** Local -> world, applying flip, rotation, then translation, in that order. */
-export function toWorld(points: Pt[], placed: { x: number; y: number; rotation: number; flipX: boolean }): Pt[] {
+export function toWorld(
+  points: Pt[],
+  placed: { x: number; y: number; rotation: number; flipX: boolean },
+): Pt[] {
   const rad = degToRad(placed.rotation);
   const cos = Math.cos(rad);
   const sin = Math.sin(rad);
@@ -129,7 +132,7 @@ function segmentsIntersect(p1: Pt, p2: Pt, p3: Pt, p4: Pt): boolean {
   const d2 = (p4.x - p3.x) * (p2.y - p3.y) - (p4.y - p3.y) * (p2.x - p3.x);
   const d3 = (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
   const d4 = (p2.x - p1.x) * (p4.y - p1.y) - (p2.y - p1.y) * (p4.x - p1.x);
-  return ((d1 > 0) !== (d2 > 0)) && ((d3 > 0) !== (d4 > 0));
+  return d1 > 0 !== d2 > 0 && d3 > 0 !== d4 > 0;
 }
 
 /**
@@ -264,7 +267,11 @@ export function clearanceZones(placed: PlacedItem, item: LibraryItem): Clearance
     });
   }
 
-  return zones.map((z) => ({ side: z.side, depth: z.depth, polygon: toWorld(z.local, placed) }));
+  return zones.map((z) => ({
+    side: z.side,
+    depth: z.depth,
+    polygon: toWorld(z.local, placed),
+  }));
 }
 
 /**
@@ -509,7 +516,10 @@ export function snapToWall(
     const t = Math.max(0, Math.min(wallLen, toItem.x * along.x + toItem.y * along.y));
 
     // Flush means the back face touches the wall: centre sits half a depth in.
-    const target = add(add(seg.a, vscale(along, t)), vscale(inward, wall.thickness / 2 + d / 2));
+    const target = add(
+      add(seg.a, vscale(along, t)),
+      vscale(inward, wall.thickness / 2 + d / 2),
+    );
     const gap = Math.abs(perpDist - (wall.thickness / 2 + d / 2));
 
     if (gap > toleranceMm) continue;

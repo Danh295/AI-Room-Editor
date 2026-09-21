@@ -69,10 +69,18 @@ export default function LibraryPanel() {
       <div className="library-head">
         <h2>Library</h2>
         <span className="head-actions">
-          <button className="linky" onClick={() => setLookupOpen(true)} title="Find a product by link, model number, or photo">
+          <button
+            className="linky"
+            onClick={() => setLookupOpen(true)}
+            title="Find a product by link, model number, or photo"
+          >
             AI lookup
           </button>
-          <button className="linky" onClick={() => setFormFor(null)} title="Enter a product by hand">
+          <button
+            className="linky"
+            onClick={() => setFormFor(null)}
+            title="Enter a product by hand"
+          >
             + Add
           </button>
         </span>
@@ -88,9 +96,8 @@ export default function LibraryPanel() {
 
       {library.length === 0 && (
         <p className="hint">
-          Nothing here yet. <b>AI lookup</b> finds a product from a link, model
-          number, or photo and shows you the specs to confirm. <b>+ Add</b> enters
-          one by hand.
+          Nothing here yet. <b>AI lookup</b> finds a product from a link, model number, or photo
+          and shows you the specs to confirm. <b>+ Add</b> enters one by hand.
         </p>
       )}
 

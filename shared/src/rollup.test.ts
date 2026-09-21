@@ -92,7 +92,13 @@ describe('rollUpCost', () => {
   it('totals by category', () => {
     const sofa = priced('Sofa', 1000);
     const table = {
-      ...createLibraryItem({ name: 'Table', subcategoryId: 'coffee-table', w: 1200, d: 600, h: 450 }),
+      ...createLibraryItem({
+        name: 'Table',
+        subcategoryId: 'coffee-table',
+        w: 1200,
+        d: 600,
+        h: 450,
+      }),
       price: 400,
       currency: 'CAD',
     };

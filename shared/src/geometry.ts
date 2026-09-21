@@ -80,7 +80,10 @@ export interface Segment {
  * Closest point on segment `s` to `p`, and how far along the segment it sits.
  * `t` is clamped to [0,1], so the result is always on the segment itself.
  */
-export function closestPointOnSegment(p: Pt, s: Segment): { point: Pt; t: number; distance: number } {
+export function closestPointOnSegment(
+  p: Pt,
+  s: Segment,
+): { point: Pt; t: number; distance: number } {
   const ab = sub(s.b, s.a);
   const lenSq = dot(ab, ab);
   if (lenSq < EPS) {
@@ -293,7 +296,12 @@ export function wallInwardNormal(room: Room, wall: Wall): Pt {
  * Position of an opening's midpoint along its wall.
  * `offset` is measured from the wall's `a` end to the opening's near edge.
  */
-export function openingMidpoint(room: Room, wallId: string, offset: number, width: number): Pt | null {
+export function openingMidpoint(
+  room: Room,
+  wallId: string,
+  offset: number,
+  width: number,
+): Pt | null {
   const wall = room.walls.find((w) => w.id === wallId);
   if (!wall) return null;
   const seg = wallSegment(room, wall);

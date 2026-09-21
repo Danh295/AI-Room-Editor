@@ -87,7 +87,12 @@ export function createApp({ serveClient = false }: AppOptions = {}): express.Exp
   }
 
   app.use(
-    (err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    (
+      err: unknown,
+      _req: express.Request,
+      res: express.Response,
+      _next: express.NextFunction,
+    ) => {
       // A body the parser couldn't read is the caller's problem, not a server
       // fault, and answering 500 to it sends people hunting for a bug here.
       if (err instanceof SyntaxError && 'body' in err) {

@@ -16,7 +16,12 @@ import type {
   Wall,
 } from './types.js';
 import { defaultGridStep, MM_PER_INCH } from './units.js';
-import { defaultClearances, defaultFootprint, defaultLayer, findSubcategory } from './taxonomy.js';
+import {
+  defaultClearances,
+  defaultFootprint,
+  defaultLayer,
+  findSubcategory,
+} from './taxonomy.js';
 
 /**
  * Short, sortable, collision-resistant enough for a single-user local app.

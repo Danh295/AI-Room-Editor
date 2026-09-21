@@ -51,9 +51,7 @@ function table(round = false): Glyph {
 
 /** Bed: pillows along the head, a turned-down sheet line across. */
 function bed(pillows: number): Glyph {
-  const strokes: Stroke[] = [
-    { kind: 'line', points: [0.02, 0.68, 0.98, 0.68] },
-  ];
+  const strokes: Stroke[] = [{ kind: 'line', points: [0.02, 0.68, 0.98, 0.68] }];
   const w = pillows === 1 ? 0.5 : 0.42;
   for (let i = 0; i < pillows; i += 1) {
     const cx = pillows === 1 ? 0.5 : 0.28 + i * 0.44;
@@ -64,9 +62,7 @@ function bed(pillows: number): Glyph {
 
 /** Storage: a front face line showing which way the doors or drawers open. */
 function storage(divisions = 2): Glyph {
-  const strokes: Stroke[] = [
-    { kind: 'line', points: [0.02, 0.22, 0.98, 0.22] },
-  ];
+  const strokes: Stroke[] = [{ kind: 'line', points: [0.02, 0.22, 0.98, 0.22] }];
   for (let i = 1; i < divisions; i += 1) {
     const x = i / divisions;
     strokes.push({ kind: 'line', points: [x, 0.02, x, 0.22] });

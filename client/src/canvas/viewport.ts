@@ -76,7 +76,10 @@ export const useViewport = create<ViewportState>((set, get) => ({
     const usableW = Math.max(1, width - paddingPx * 2);
     const usableH = Math.max(1, height - paddingPx * 2);
 
-    const scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.min(usableW / worldW, usableH / worldH)));
+    const scale = Math.min(
+      MAX_SCALE,
+      Math.max(MIN_SCALE, Math.min(usableW / worldW, usableH / worldH)),
+    );
 
     // Centre the content in the viewport at the chosen scale.
     set({

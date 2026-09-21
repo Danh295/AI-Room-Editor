@@ -1,11 +1,6 @@
 import { useState } from 'react';
 import type { FloorplanTraceResult, Room, UnitSystem } from '@room/shared';
-import {
-  addOpeningNearPoint,
-  formatLength,
-  roomFromPolygon,
-  parseLength,
-} from '@room/shared';
+import { addOpeningNearPoint, formatLength, roomFromPolygon, parseLength } from '@room/shared';
 import { api } from '../api.js';
 import { useEditor } from '../store/editorStore.js';
 import { fitRoomToView } from '../canvas/PlanCanvas.js';
@@ -129,7 +124,12 @@ export default function FloorplanDialog({ units, onClose }: FloorplanDialogProps
             d.room,
             { x: opening.atPx.x * scale, y: opening.atPx.y * scale },
             {
-              kind: opening.kind === 'window' ? 'window' : opening.kind === 'opening' ? 'opening' : 'door',
+              kind:
+                opening.kind === 'window'
+                  ? 'window'
+                  : opening.kind === 'opening'
+                    ? 'opening'
+                    : 'door',
               width: Math.max(300, Math.round(opening.widthPx * scale)),
             },
             // Generous tolerance: a corner that's a few pixels off shouldn't
@@ -165,9 +165,8 @@ export default function FloorplanDialog({ units, onClose }: FloorplanDialogProps
         <h3>Trace a floor plan</h3>
 
         <p className="hint">
-          Drop in a photo or screenshot of a floor plan. The outline it finds is a
-          starting point — the image stays behind your plan so you can drag corners
-          onto it.
+          Drop in a photo or screenshot of a floor plan. The outline it finds is a starting
+          point — the image stays behind your plan so you can drag corners onto it.
         </p>
 
         <input
@@ -209,8 +208,8 @@ export default function FloorplanDialog({ units, onClose }: FloorplanDialogProps
 
             {trace.scaleMmPerPx ? (
               <p className="hint">
-                Scale: <b>{trace.scaleMmPerPx.toFixed(2)} mm per pixel</b> — the longest
-                wall works out to{' '}
+                Scale: <b>{trace.scaleMmPerPx.toFixed(2)} mm per pixel</b> — the longest wall
+                works out to{' '}
                 <b>
                   {formatLength(
                     Math.round(
@@ -258,7 +257,11 @@ export default function FloorplanDialog({ units, onClose }: FloorplanDialogProps
         <div className="dialog-actions">
           <button onClick={onClose}>Cancel</button>
           {!trace ? (
-            <button className="primary" onClick={() => void runTrace()} disabled={!image || busy}>
+            <button
+              className="primary"
+              onClick={() => void runTrace()}
+              disabled={!image || busy}
+            >
               {busy ? 'Reading…' : 'Trace it'}
             </button>
           ) : (

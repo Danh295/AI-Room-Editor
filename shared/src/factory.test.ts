@@ -45,7 +45,12 @@ describe('roomFromPolygon', () => {
   });
 
   it('refuses to build a degenerate loop from fewer than three points', () => {
-    expect(roomFromPolygon([{ x: 0, y: 0 }, { x: 100, y: 0 }]).walls).toEqual([]);
+    expect(
+      roomFromPolygon([
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+      ]).walls,
+    ).toEqual([]);
     expect(roomFromPolygon([]).walls).toEqual([]);
   });
 
@@ -100,7 +105,13 @@ describe('createProject', () => {
 
 describe('createLibraryItem', () => {
   it('fills clearances and footprint from the subcategory', () => {
-    const sofa = createLibraryItem({ name: 'KIVIK', subcategoryId: 'sofa', w: 2299, d: 950, h: 830 });
+    const sofa = createLibraryItem({
+      name: 'KIVIK',
+      subcategoryId: 'sofa',
+      w: 2299,
+      d: 950,
+      h: 830,
+    });
     expect(sofa.categoryId).toBe('seating');
     expect(sofa.clearances.front).toBeGreaterThan(0);
     expect(sofa.footprint).toEqual({ kind: 'rect' });
@@ -114,12 +125,24 @@ describe('createLibraryItem', () => {
   });
 
   it('gives a sectional an L footprint', () => {
-    const s = createLibraryItem({ name: 'S', subcategoryId: 'sectional', w: 2800, d: 2300, h: 860 });
+    const s = createLibraryItem({
+      name: 'S',
+      subcategoryId: 'sectional',
+      w: 2800,
+      d: 2300,
+      h: 860,
+    });
     expect(s.footprint.kind).toBe('L');
   });
 
   it('rounds dimensions to whole millimeters', () => {
-    const i = createLibraryItem({ name: 'x', subcategoryId: 'sofa', w: 2298.7, d: 950.2, h: 830.5 });
+    const i = createLibraryItem({
+      name: 'x',
+      subcategoryId: 'sofa',
+      w: 2298.7,
+      d: 950.2,
+      h: 830.5,
+    });
     expect(i.w).toBe(2299);
     expect(i.d).toBe(950);
   });
@@ -127,10 +150,22 @@ describe('createLibraryItem', () => {
 
 describe('placeItem', () => {
   it('inherits the category default layer', () => {
-    const rug = createLibraryItem({ name: 'Rug', subcategoryId: 'area-rug', w: 2400, d: 3000, h: 10 });
+    const rug = createLibraryItem({
+      name: 'Rug',
+      subcategoryId: 'area-rug',
+      w: 2400,
+      d: 3000,
+      h: 10,
+    });
     expect(placeItem(rug, 0, 0).layer).toBe('rug');
 
-    const sofa = createLibraryItem({ name: 'Sofa', subcategoryId: 'sofa', w: 2000, d: 900, h: 800 });
+    const sofa = createLibraryItem({
+      name: 'Sofa',
+      subcategoryId: 'sofa',
+      w: 2000,
+      d: 900,
+      h: 800,
+    });
     expect(placeItem(sofa, 0, 0).layer).toBe('floor');
   });
 

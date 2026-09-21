@@ -41,7 +41,11 @@ describe('localFootprint', () => {
   });
 
   it('cuts a notch out of an L-shape, keeping it inside the bounding box', () => {
-    const pts = localFootprint({ kind: 'L', notchW: 0.5, notchD: 0.5, corner: 'ne' }, 2000, 1000);
+    const pts = localFootprint(
+      { kind: 'L', notchW: 0.5, notchD: 0.5, corner: 'ne' },
+      2000,
+      1000,
+    );
     expect(pts).toHaveLength(6);
     expect(boundsOfPoints(pts)).toEqual({ minX: -1000, minY: -500, maxX: 1000, maxY: 500 });
     // An L is smaller than its bounding box by exactly the notch.
@@ -64,7 +68,14 @@ describe('localFootprint', () => {
 
   it('scales a normalized polygon to the item size', () => {
     const pts = localFootprint(
-      { kind: 'poly', points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0.5, y: 1 }] },
+      {
+        kind: 'poly',
+        points: [
+          { x: 0, y: 0 },
+          { x: 1, y: 0 },
+          { x: 0.5, y: 1 },
+        ],
+      },
       1000,
       800,
     );
@@ -290,14 +301,21 @@ describe('snapToItems', () => {
   it('ignores neighbours that are too far', () => {
     const a = sofa();
     const b = table();
-    expect(snapToItems(place(b, 9000, 0), b, [{ placed: place(a, 0, 0), item: a }], 100)).toBeNull();
+    expect(
+      snapToItems(place(b, 9000, 0), b, [{ placed: place(a, 0, 0), item: a }], 100),
+    ).toBeNull();
   });
 
   it('ignores a neighbour that does not face it on the other axis', () => {
     const a = sofa();
     const b = table();
     // Alongside but far away in Y — nothing to be flush with.
-    const snap = snapToItems(place(b, 1050, 9000), b, [{ placed: place(a, 0, 0), item: a }], 100);
+    const snap = snapToItems(
+      place(b, 1050, 9000),
+      b,
+      [{ placed: place(a, 0, 0), item: a }],
+      100,
+    );
     expect(snap).toBeNull();
   });
 });
@@ -322,7 +340,9 @@ describe('findConflicts', () => {
     const t = table();
     // Sofa spans x 2000..4000; table starts exactly at 4000.
     const items = [place(s, 3000, 2000), place(t, 4600, 2000)];
-    expect(findConflicts(items, lib(s, t), room).filter((c) => c.kind === 'overlap')).toEqual([]);
+    expect(findConflicts(items, lib(s, t), room).filter((c) => c.kind === 'overlap')).toEqual(
+      [],
+    );
   });
 
   it('reports furniture pushed through a wall', () => {
@@ -355,7 +375,9 @@ describe('findConflicts', () => {
     const t = table();
     // 600mm of gap, comfortably past the 457mm requirement.
     const items = [place(s, 3000, 2000), place(t, 3000, 2000 - 450 - 600 - 300)];
-    expect(findConflicts(items, lib(s, t), room).filter((c) => c.kind === 'clearance')).toEqual([]);
+    expect(findConflicts(items, lib(s, t), room).filter((c) => c.kind === 'clearance')).toEqual(
+      [],
+    );
   });
 
   it('lets a coffee table stand on a rug without complaint', () => {
@@ -372,7 +394,13 @@ describe('findConflicts', () => {
   });
 
   it('ignores wall-mounted pieces hanging over furniture', () => {
-    const art = createLibraryItem({ name: 'Art', subcategoryId: 'mirror', w: 800, d: 50, h: 1000 });
+    const art = createLibraryItem({
+      name: 'Art',
+      subcategoryId: 'mirror',
+      w: 800,
+      d: 50,
+      h: 1000,
+    });
     const s = sofa();
     const items = [place(art, 3000, 2000), place(s, 3000, 2000)];
     expect(findConflicts(items, lib(art, s), room)).toEqual([]);
@@ -417,7 +445,11 @@ describe('findConflicts', () => {
 describe('doorSwingPolygon', () => {
   it('sweeps into the room, not through the wall', () => {
     const room = rectangularRoom(6000, 4000, 100);
-    const door = addOpening(room, room.walls[0]!.id, { kind: 'door', offset: 2000, width: 900 })!;
+    const door = addOpening(room, room.walls[0]!.id, {
+      kind: 'door',
+      offset: 2000,
+      width: 900,
+    })!;
     const swing = doorSwingPolygon(room, door);
 
     expect(swing.length).toBeGreaterThan(3);
@@ -431,13 +463,21 @@ describe('doorSwingPolygon', () => {
 
   it('returns nothing for a window', () => {
     const room = rectangularRoom(6000, 4000, 100);
-    const win = addOpening(room, room.walls[0]!.id, { kind: 'window', offset: 1000, width: 900 })!;
+    const win = addOpening(room, room.walls[0]!.id, {
+      kind: 'window',
+      offset: 1000,
+      width: 900,
+    })!;
     expect(doorSwingPolygon(room, win)).toEqual([]);
   });
 
   it('sweeps outward when the door opens out', () => {
     const room = rectangularRoom(6000, 4000, 100);
-    const door = addOpening(room, room.walls[0]!.id, { kind: 'door', offset: 2000, width: 900 })!;
+    const door = addOpening(room, room.walls[0]!.id, {
+      kind: 'door',
+      offset: 2000,
+      width: 900,
+    })!;
     door.swing!.into = 'out';
     const swing = doorSwingPolygon(room, door);
     // Now the far side of the arc lies outside the room.

@@ -199,32 +199,52 @@ describe('splitWall', () => {
 describe('openings', () => {
   it('adds a door with a default swing', () => {
     const room = rectangularRoom(4000, 3000);
-    const door = addOpening(room, room.walls[0]!.id, { kind: 'door', offset: 1000, width: 900 })!;
+    const door = addOpening(room, room.walls[0]!.id, {
+      kind: 'door',
+      offset: 1000,
+      width: 900,
+    })!;
     expect(door.swing).toEqual({ hinge: 'a', into: 'in', angle: 90 });
   });
 
   it('does not give a window a swing', () => {
     const room = rectangularRoom(4000, 3000);
-    const win = addOpening(room, room.walls[0]!.id, { kind: 'window', offset: 1000, width: 900 })!;
+    const win = addOpening(room, room.walls[0]!.id, {
+      kind: 'window',
+      offset: 1000,
+      width: 900,
+    })!;
     expect(win.swing).toBeUndefined();
   });
 
   it('refuses an opening at least as wide as its wall', () => {
     const room = rectangularRoom(4000, 3000);
-    expect(addOpening(room, room.walls[0]!.id, { kind: 'door', offset: 0, width: 4000 })).toBeNull();
-    expect(addOpening(room, room.walls[0]!.id, { kind: 'door', offset: 0, width: 5000 })).toBeNull();
+    expect(
+      addOpening(room, room.walls[0]!.id, { kind: 'door', offset: 0, width: 4000 }),
+    ).toBeNull();
+    expect(
+      addOpening(room, room.walls[0]!.id, { kind: 'door', offset: 0, width: 5000 }),
+    ).toBeNull();
     expect(room.openings).toHaveLength(0);
   });
 
   it('clamps an out-of-range offset on insert', () => {
     const room = rectangularRoom(4000, 3000);
-    const door = addOpening(room, room.walls[0]!.id, { kind: 'door', offset: 9999, width: 900 })!;
+    const door = addOpening(room, room.walls[0]!.id, {
+      kind: 'door',
+      offset: 9999,
+      width: 900,
+    })!;
     expect(door.offset).toBe(3100);
   });
 
   it('clamps when sliding along the wall', () => {
     const room = rectangularRoom(4000, 3000);
-    const door = addOpening(room, room.walls[0]!.id, { kind: 'door', offset: 1000, width: 900 })!;
+    const door = addOpening(room, room.walls[0]!.id, {
+      kind: 'door',
+      offset: 1000,
+      width: 900,
+    })!;
 
     moveOpening(room, door.id, -500);
     expect(room.openings[0]!.offset).toBe(0);
@@ -235,7 +255,11 @@ describe('openings', () => {
 
   it('clamps width to the wall and re-clamps the offset', () => {
     const room = rectangularRoom(4000, 3000);
-    const door = addOpening(room, room.walls[0]!.id, { kind: 'door', offset: 3000, width: 900 })!;
+    const door = addOpening(room, room.walls[0]!.id, {
+      kind: 'door',
+      offset: 3000,
+      width: 900,
+    })!;
 
     resizeOpening(room, door.id, 2000);
     expect(room.openings[0]!.width).toBe(2000);
@@ -262,7 +286,12 @@ describe('openings', () => {
   it('drops an opening onto the nearest wall and centres it on the click', () => {
     const room = rectangularRoom(4000, 3000);
     // Just below the top wall, a third of the way across.
-    const placed = addOpeningNearPoint(room, { x: 1200, y: 40 }, { kind: 'door', width: 900 }, 200);
+    const placed = addOpeningNearPoint(
+      room,
+      { x: 1200, y: 40 },
+      { kind: 'door', width: 900 },
+      200,
+    );
 
     expect(placed).not.toBeNull();
     expect(placed!.wallId).toBe(room.walls[0]!.id);
@@ -271,7 +300,9 @@ describe('openings', () => {
 
   it('returns null when no wall is close enough', () => {
     const room = rectangularRoom(4000, 3000);
-    expect(addOpeningNearPoint(room, { x: 2000, y: 1500 }, { kind: 'door', width: 900 }, 200)).toBeNull();
+    expect(
+      addOpeningNearPoint(room, { x: 2000, y: 1500 }, { kind: 'door', width: 900 }, 200),
+    ).toBeNull();
     expect(room.openings).toHaveLength(0);
   });
 });

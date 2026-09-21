@@ -44,7 +44,11 @@ export function moveVertex(room: Room, vertexId: string, to: { x: number; y: num
   vertex.y = snapped.y;
 }
 
-export function translateVertex(room: Room, vertexId: string, by: { x: number; y: number }): void {
+export function translateVertex(
+  room: Room,
+  vertexId: string,
+  by: { x: number; y: number },
+): void {
   const vertex = room.vertices[vertexId];
   if (!vertex) return;
   moveVertex(room, vertexId, add(vertex, by));
@@ -164,7 +168,11 @@ export function deleteWall(room: Room, wallId: string): void {
  * Split a wall at a point along it, inserting a vertex.
  * Openings are reassigned to whichever half now contains them.
  */
-export function splitWall(room: Room, wallId: string, at: { x: number; y: number }): string | null {
+export function splitWall(
+  room: Room,
+  wallId: string,
+  at: { x: number; y: number },
+): string | null {
   const wall = findWall(room, wallId);
   if (!wall) return null;
   const seg = wallSegment(room, wall);
@@ -181,7 +189,12 @@ export function splitWall(room: Room, wallId: string, at: { x: number; y: number
 
   const originalB = wall.b;
   wall.b = midId;
-  const secondHalf: Wall = { id: newId('w'), a: midId, b: originalB, thickness: wall.thickness };
+  const secondHalf: Wall = {
+    id: newId('w'),
+    a: midId,
+    b: originalB,
+    thickness: wall.thickness,
+  };
 
   const index = room.walls.findIndex((w) => w.id === wallId);
   room.walls.splice(index + 1, 0, secondHalf);
@@ -209,7 +222,11 @@ export interface AddOpeningOptions {
   sillHeight?: number;
 }
 
-export function addOpening(room: Room, wallId: string, options: AddOpeningOptions): Opening | null {
+export function addOpening(
+  room: Room,
+  wallId: string,
+  options: AddOpeningOptions,
+): Opening | null {
   const wall = findWall(room, wallId);
   if (!wall) return null;
   const seg = wallSegment(room, wall);
@@ -244,9 +261,7 @@ export function moveOpening(room: Room, openingId: string, offset: number): void
   const seg = wallSegment(room, wall);
   if (!seg) return;
 
-  opening.offset = Math.round(
-    clampOpening(distance(seg.a, seg.b), offset, opening.width),
-  );
+  opening.offset = Math.round(clampOpening(distance(seg.a, seg.b), offset, opening.width));
 }
 
 export function resizeOpening(room: Room, openingId: string, width: number): void {

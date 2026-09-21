@@ -70,7 +70,11 @@ function toAiError(err: unknown): AiError {
     );
   }
   if (/\b503\b|high demand|overloaded|unavailable/i.test(message)) {
-    return new AiError('Gemini is busy right now. Retrying in a moment usually works.', 'unavailable', 503);
+    return new AiError(
+      'Gemini is busy right now. Retrying in a moment usually works.',
+      'unavailable',
+      503,
+    );
   }
   if (/\b404\b|not found|no longer available/i.test(message)) {
     return new AiError(

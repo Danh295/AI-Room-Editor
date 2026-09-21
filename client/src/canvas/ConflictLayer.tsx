@@ -1,6 +1,11 @@
 import { Group, Line, Shape } from 'react-konva';
 import type { LibraryItem, PlacedItem, Room, UnitSystem } from '@room/shared';
-import { clearanceZones, doorSwingPolygon, footprintPolygon, type Conflict } from '@room/shared';
+import {
+  clearanceZones,
+  doorSwingPolygon,
+  footprintPolygon,
+  type Conflict,
+} from '@room/shared';
 import type { ViewportState } from './viewport.js';
 
 const OVERLAP = '#ff6b6b';
@@ -101,7 +106,8 @@ export default function ConflictLayer({
     conflicts.filter((c) => c.kind === 'clearance').flatMap((c) => c.itemIds),
   );
   const overlapping = new Set(
-    conflicts.filter((c) => c.kind === 'overlap' || c.kind === 'outside' || c.kind === 'door')
+    conflicts
+      .filter((c) => c.kind === 'overlap' || c.kind === 'outside' || c.kind === 'door')
       .flatMap((c) => c.itemIds),
   );
 
@@ -136,9 +142,7 @@ export default function ConflictLayer({
               // Amber hatch only where this zone is genuinely obstructed.
               const obstructed = conflicts.some(
                 (c) =>
-                  c.kind === 'clearance' &&
-                  c.side === zone.side &&
-                  c.itemIds[0] === placed.id,
+                  c.kind === 'clearance' && c.side === zone.side && c.itemIds[0] === placed.id,
               );
 
               return (
