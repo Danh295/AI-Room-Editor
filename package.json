@@ -16,13 +16,18 @@
     "build": "npm run typecheck && npm run build --workspace server && npm run build --workspace client",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "start": "NODE_ENV=production npm run start --workspace server"
+    "start": "NODE_ENV=production npm run start --workspace server",
+    "lint": "oxlint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "engines": {
     "node": ">=20.19"
   },
   "devDependencies": {
     "concurrently": "^10.0.5",
+    "oxlint": "^1.85.0",
+    "prettier": "^3.9.8",
     "typescript": "^7.0.2",
     "vitest": "^4.1.11"
   }

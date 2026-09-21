@@ -75,7 +75,7 @@ export default function FloorplanDialog({ units, onClose }: FloorplanDialogProps
     setError(null);
     try {
       const mimeType = image.dataUrl.slice(5, image.dataUrl.indexOf(';')) || 'image/png';
-      setTrace(await api.ingestFloorplan2(image.dataUrl, mimeType, image.width, image.height));
+      setTrace(await api.ingestFloorplan(image.dataUrl, mimeType, image.width, image.height));
     } catch (err) {
       setError((err as Error).message);
     } finally {

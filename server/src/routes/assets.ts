@@ -2,7 +2,7 @@ import { Router } from 'express';
 import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
-import { IMAGES_DIR, imagePath, isSafeId, ensureDataDirs } from '../paths.js';
+import { imagePath, isSafeId, ensureDataDirs } from '../paths.js';
 import { assertFetchableUrl, fetchWithTimeout } from '../net.js';
 
 export const assetsRouter = Router();
@@ -99,7 +99,6 @@ assetsRouter.get('/:assetId', async (req, res) => {
   }
 });
 
-export { IMAGES_DIR };
 
 
 /**

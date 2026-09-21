@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from 'react';
 import { Group, Line, Circle, Rect, Text, Shape, Arc, Image as KonvaImage } from 'react-konva';
-import type { Opening, Pt, Room, UnitSystem, Wall } from '@room/shared';
+import type { Opening, Pt, Room, UnitSystem } from '@room/shared';
 import {
   add,
   angleOf,

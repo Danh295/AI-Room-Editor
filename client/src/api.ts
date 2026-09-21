@@ -34,8 +34,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export interface Health {
   ok: boolean;
   dataDir: string;
-  /** Which AI provider the server has a key for, or null if none. */
+  /**
+   * Which AI provider the server has a working key for, or null if none.
+   * 'anthropic' is in the union because the server's provider interface has a
+   * slot for it; no build ships an implementation, so it never comes back.
+   */
   aiProvider: 'gemini' | 'anthropic' | null;
+  /** False when the data directory can't be written — saves will fail. */
+  dataWritable?: boolean;
 }
 
 export type IngestProductInput =
@@ -87,7 +93,7 @@ export const api = {
    * Trace a floor plan. The image's natural pixel size is required: the prompt
    * states it, and the returned coordinates are in that space.
    */
-  ingestFloorplan2: (imageBase64: string, mimeType: string, width: number, height: number) =>
+  ingestFloorplan: (imageBase64: string, mimeType: string, width: number, height: number) =>
     request<FloorplanTraceResult>('/ingest/floorplan', {
       method: 'POST',
       body: JSON.stringify({ imageBase64, mimeType, width, height }),

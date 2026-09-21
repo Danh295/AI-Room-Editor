@@ -6,7 +6,6 @@ import {
   defaultFootprint,
   findSubcategory,
   taxonomyPromptList,
-  MM_PER_INCH,
   newId,
 } from '@room/shared';
 import { AiError, getProvider, type Citation } from '../ai/index.js';
@@ -477,4 +476,3 @@ ingestRouter.post('/floorplan', async (req, res) => {
   }
 });
 
-export { MM_PER_INCH };

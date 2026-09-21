@@ -1,0 +1,41 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "react",
+    "typescript",
+    "oxc"
+  ],
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2024": true
+  },
+  "ignorePatterns": [
+    "**/dist/**",
+    "node_modules/**",
+    "data/**"
+  ],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "rules": {
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn",
+    "no-unused-vars": [
+      "warn",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
+    ],
+    "react/set-state-in-effect": "off",
+    "typescript/no-explicit-any": "warn",
+    "no-console": "off",
+    "react/react-in-jsx-scope": "off",
+    "react/jsx-no-target-blank": "warn",
+    "react/no-array-index-key": "off",
+    "oxc/no-async-endpoint-handlers": "off"
+  }
+}
