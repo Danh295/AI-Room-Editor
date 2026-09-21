@@ -211,6 +211,42 @@ describe('placements', () => {
   });
 });
 
+describe('escape', () => {
+  function selectSomething(): string {
+    const item = useEditor.getState().library[0]!;
+    const id = useEditor.getState().placeInRoom(item.id, 0, 0)!;
+    useEditor.getState().select([id]);
+    return id;
+  }
+
+  it('abandons a draft first, and stays on the wall tool', () => {
+    useEditor.getState().setTool('wall');
+    useEditor.getState().draftStart({ x: 0, y: 0 });
+
+    useEditor.getState().escape();
+
+    expect(useEditor.getState().draft).toBeNull();
+    expect(useEditor.getState().tool).toBe('wall');
+  });
+
+  it('drops a drawing tool back to the pointer', () => {
+    useEditor.getState().setTool('door');
+
+    useEditor.getState().escape();
+
+    expect(useEditor.getState().tool).toBe('select');
+  });
+
+  it('clears the selection once already on the pointer', () => {
+    selectSomething();
+    expect(useEditor.getState().tool).toBe('select');
+
+    useEditor.getState().escape();
+
+    expect(useEditor.getState().selection).toEqual([]);
+  });
+});
+
 describe('wall drafting', () => {
   it('commits a closed chain as one undo step', () => {
     const state = useEditor.getState();

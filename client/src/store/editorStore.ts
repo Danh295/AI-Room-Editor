@@ -127,6 +127,12 @@ export interface EditorState {
   select: (ids: string[]) => void;
   toggleSelect: (id: string, additive: boolean) => void;
   clearSelection: () => void;
+  /**
+   * What Esc means: undo one level of "what I'm in the middle of". A draft is
+   * abandoned first; with none, a drawing tool drops back to the pointer;
+   * already on the pointer, the selection clears.
+   */
+  escape: () => void;
 
   // --- persistence
   save: () => Promise<void>;
@@ -545,6 +551,26 @@ export const useEditor = create<EditorState>((set, get) => {
 
     clearSelection() {
       set({ selection: [] });
+    },
+
+    escape() {
+      /*
+        Spelled out as its own action rather than left implicit in the key
+        handler. Esc used to deselect only because switching to the pointer
+        happened to clear the selection as a side effect of setTool — which
+        made the one behaviour depend on an incidental detail of the other,
+        and was untestable where it lived.
+      */
+      const { draft, tool } = get();
+      if (draft) {
+        get().draftCancel();
+        return;
+      }
+      if (tool !== 'select') {
+        get().setTool('select');
+        return;
+      }
+      get().clearSelection();
     },
 
     async save() {

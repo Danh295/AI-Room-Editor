@@ -14,6 +14,7 @@ import { useViewport } from './canvas/viewport.js';
 import { useConflictStore, summarize } from './canvas/conflictStore.js';
 import PlanCanvas from './canvas/PlanCanvas.js';
 import { useExportMode } from './canvas/exportPlan.js';
+import { isTextEntry } from './keyboard.js';
 import RoomPanel from './panels/RoomPanel.js';
 import ItemPanel from './panels/ItemPanel.js';
 import LibraryPanel from './panels/LibraryPanel.js';
@@ -154,9 +155,7 @@ export default function App() {
   // does what the field expects rather than reverting the plan behind it.
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      const target = event.target as HTMLElement | null;
-      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
-      if (target?.isContentEditable) return;
+      if (isTextEntry(event.target)) return;
 
       if (event.ctrlKey || event.metaKey) {
         const key = event.key.toLowerCase();

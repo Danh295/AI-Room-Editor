@@ -13,6 +13,7 @@ import {
   MM_PER_INCH,
 } from '@room/shared';
 import { useEditor } from '../store/editorStore.js';
+import { isTextEntry } from '../keyboard.js';
 import { useViewport, toWorld, mmPerPixel } from './viewport.js';
 import { snapPoint, nearestWall, type SnapResult } from './snapping.js';
 import ItemLayer from './ItemLayer.js';
@@ -261,17 +262,15 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
     };
   }, []);
 
-  // Enter finishes an open chain, Escape abandons it, Backspace drops a point.
+  // Enter finishes an open chain, Escape steps back, Backspace drops a point.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      const target = e.target as HTMLElement | null;
-      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      if (isTextEntry(e.target)) return;
 
       const state = useEditor.getState();
 
       if (e.key === 'Escape') {
-        if (state.draft) state.draftCancel();
-        else state.setTool('select');
+        state.escape();
         return;
       }
       if (e.key === 'Enter' && state.draft) {
