@@ -27,11 +27,15 @@ const SAVE_LABEL: Record<string, string> = {
   error: 'Save failed',
 };
 
+/*
+  What you're drawing. How the pointer behaves — select vs. pan — lives on the
+  canvas toolbar instead, next to the view it acts on, so neither bar has to
+  explain two unrelated things at once.
+*/
 const TOOLS: { id: Tool; label: string; hint: string }[] = [
-  { id: 'select', label: 'Select', hint: 'Select and move (Esc)' },
-  { id: 'wall', label: 'Wall', hint: 'Draw walls' },
-  { id: 'door', label: 'Door', hint: 'Click a wall to place a door' },
-  { id: 'window', label: 'Window', hint: 'Click a wall to place a window' },
+  { id: 'wall', label: 'Wall', hint: 'Draw walls (W)' },
+  { id: 'door', label: 'Door', hint: 'Click a wall to place a door (D)' },
+  { id: 'window', label: 'Window', hint: 'Click a wall to place a window (N)' },
 ];
 
 export default function App() {
@@ -169,9 +173,12 @@ export default function App() {
         return;
       }
 
-      // Single-key tool switches, the way every drawing app does it.
+      // Single-key tool switches, the way every drawing app does it. V is the
+      // pointer everywhere else, so it stays as an alias for M.
       const shortcuts: Record<string, Tool> = {
+        m: 'select',
         v: 'select',
+        p: 'pan',
         w: 'wall',
         d: 'door',
         n: 'window',

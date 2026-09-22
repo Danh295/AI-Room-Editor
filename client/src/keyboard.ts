@@ -22,3 +22,17 @@ export function isTextEntry(target: EventTarget | null): boolean {
   if (el.tagName && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return true;
   return Boolean(el.isContentEditable);
 }
+
+/**
+ * Elements where Space already has a job: activating a button or link,
+ * toggling a disclosure. Taking Space from these for a temporary pan would
+ * leave keyboard users with no way to press anything.
+ */
+const SPACE_ACTIVATED = 'button, a[href], [role="button"], summary';
+
+/** Focus is on something that needs the Space key for itself. */
+export function ownsSpace(target: EventTarget | null): boolean {
+  if (isTextEntry(target)) return true;
+  const el = target as ElementLike | null;
+  return Boolean(el?.closest?.(SPACE_ACTIVATED));
+}

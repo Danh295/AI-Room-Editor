@@ -13,7 +13,7 @@ import {
   MM_PER_INCH,
 } from '@room/shared';
 import { useEditor } from '../store/editorStore.js';
-import { isTextEntry } from '../keyboard.js';
+import { isTextEntry, ownsSpace } from '../keyboard.js';
 import { useViewport, toWorld, mmPerPixel } from './viewport.js';
 import { snapPoint, nearestWall, type SnapResult } from './snapping.js';
 import ItemLayer from './ItemLayer.js';
@@ -36,6 +36,8 @@ import {
 const SNAP_PX = 12;
 /** How close to the first point you must be for a click to close the loop. */
 const CLOSE_PX = 14;
+/** How far the pointer must travel before a press counts as a drag, not a click. */
+const DRAG_THRESHOLD_PX = 3;
 
 const DEFAULT_DOOR_WIDTH = Math.round(32 * MM_PER_INCH);
 const DEFAULT_WINDOW_WIDTH = Math.round(36 * MM_PER_INCH);
@@ -64,21 +66,36 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
   const draftHover = useEditor((s) => s.draftHover);
   const draftFinish = useEditor((s) => s.draftFinish);
   const updatePlacement = useEditor((s) => s.updatePlacement);
+  const setTool = useEditor((s) => s.setTool);
 
   const vp = useViewport();
   // A view-only override while a PNG is being taken; see exportPlan.ts.
   const exporting = useExportMode((s) => s.exporting);
   const [snap, setSnap] = useState<SnapResult | null>(null);
   const [shiftHeld, setShiftHeld] = useState(false);
+  // Space is a *temporary* pan, on top of whatever tool is active — held
+  // separately from `tool` so releasing it returns you to a wall chain in
+  // progress instead of abandoning it.
+  const [spaceHeld, setSpaceHeld] = useState(false);
+  // Only flips twice per gesture (mousedown/up), not per mousemove, so it's
+  // cheap to hold in state rather than the ref below.
+  const [grabbing, setGrabbing] = useState(false);
   const panning = useRef<{
     startX: number;
     startY: number;
     originX: number;
     originY: number;
+    /** Past the click-vs-drag threshold — a real pan, not a stationary click. */
+    moved: boolean;
+    /** Clear the selection on mouseup if the pointer never moved. */
+    clearOnClick: boolean;
   } | null>(null);
 
   const room = project?.room;
   const settings = project?.settings;
+  // Held Space temporarily behaves like the pan tool without switching to it,
+  // so releasing it drops you back into whatever you were doing.
+  const panMode = tool === 'pan' || spaceHeld;
 
   // Hand the stage to the exporter for as long as this canvas is mounted.
   useEffect(() => {
@@ -101,21 +118,61 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
     return () => observer.disconnect();
   }, []);
 
-  // Track shift for orthogonal locking without re-rendering on every mousemove.
+  // Track shift for orthogonal locking, and space for a temporary pan,
+  // without re-rendering the whole tree on every mousemove.
   useEffect(() => {
-    const down = (e: KeyboardEvent) => e.key === 'Shift' && setShiftHeld(true);
-    const up = (e: KeyboardEvent) => e.key === 'Shift' && setShiftHeld(false);
+    function down(e: KeyboardEvent) {
+      if (e.key === 'Shift') setShiftHeld(true);
+      // e.repeat filters the held-key autorepeat flood. ownsSpace leaves Space
+      // alone wherever it already has a job — typing in a field, pressing a
+      // focused button — so a temporary pan never costs a keyboard user the
+      // ability to activate anything.
+      if (e.code === 'Space' && !e.repeat && !ownsSpace(e.target)) {
+        // Otherwise the page scrolls.
+        e.preventDefault();
+        setSpaceHeld(true);
+      }
+    }
+    function up(e: KeyboardEvent) {
+      if (e.key === 'Shift') setShiftHeld(false);
+      if (e.code === 'Space') setSpaceHeld(false);
+    }
+    // Alt-tabbing away mid-hold would otherwise leave the canvas stuck
+    // believing a key is still down that this window will never see released.
+    function blur() {
+      setShiftHeld(false);
+      setSpaceHeld(false);
+    }
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
+    window.addEventListener('blur', blur);
     return () => {
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', blur);
     };
   }, []);
 
   const toleranceMm = useMemo(() => SNAP_PX * mmPerPixel(vp.scale), [vp.scale]);
 
   const libraryById = useMemo(() => new Map(library.map((i) => [i.id, i])), [library]);
+
+  // Memoized on the room alone: this component re-renders on every mousemove
+  // and pan frame, and rebuilding the outline each time just to enable a
+  // button is waste.
+  const canFit = useMemo(() => (room ? roomPolygon(room).length >= 3 : false), [room]);
+
+  /*
+    While panning, the snap marker and the wall draft's rubber band would be
+    pinned to a world position that slides away with the view. Drop both the
+    moment a pan mode begins, so neither can reappear at a stale spot when it
+    ends; the next mousemove after the pan puts them back where the cursor is.
+  */
+  useEffect(() => {
+    if (!panMode) return;
+    setSnap(null);
+    draftHover(null);
+  }, [panMode, draftHover]);
 
   /*
     Recomputed whenever the items or the room change, which includes every frame
@@ -168,20 +225,57 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
     useViewport.getState().zoomAt(pointer, factor);
   }, []);
 
+  /**
+   * Arm a pan gesture. Nothing moves until the pointer passes the threshold in
+   * the window listener below, so an armed pan that never travels is still
+   * just a click — which is what `clearOnClick` decides the meaning of.
+   */
+  const beginPan = useCallback((evt: MouseEvent, clearOnClick: boolean) => {
+    // Read at call time rather than closed over, so this callback — and the
+    // mousedown handler that depends on it — isn't rebuilt on every pan frame.
+    const { x, y } = useViewport.getState();
+    panning.current = {
+      startX: evt.clientX,
+      startY: evt.clientY,
+      originX: x,
+      originY: y,
+      moved: false,
+      clearOnClick,
+    };
+    // Close the hand once a pan is certain. An explicit pan (pan tool, Space,
+    // middle button) is certain on the press; the select tool's implied pan
+    // is still just a click until it passes the drag threshold in onMove,
+    // and flashing a grab cursor on every deselect-click would be noise.
+    if (!clearOnClick) setGrabbing(true);
+  }, []);
+
   const handleMouseDown = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent>) => {
+      /*
+        Pressing on the plan means working on the plan. A button still holding
+        focus from an earlier mouse click — "New room", say — would otherwise
+        take the next Space press as a click instead of a pan, now that Space
+        is left alone on focused buttons.
+      */
+      if (document.activeElement instanceof HTMLButtonElement) {
+        document.activeElement.blur();
+      }
+
       // Middle button, or space-less right-drag, pans regardless of tool.
       if (e.evt.button === 1 || e.evt.button === 2) {
         e.evt.preventDefault();
-        panning.current = {
-          startX: e.evt.clientX,
-          startY: e.evt.clientY,
-          originX: vp.x,
-          originY: vp.y,
-        };
+        beginPan(e.evt, false);
         return;
       }
       if (e.evt.button !== 0) return;
+
+      // Pan tool, or Space held: drag from anywhere, over anything. A click
+      // that goes nowhere does nothing — panning is navigation, not a way to
+      // select or deselect.
+      if (panMode) {
+        beginPan(e.evt, false);
+        return;
+      }
 
       const resolved = resolvePointer();
       if (!resolved || !room || !settings) return;
@@ -215,11 +309,20 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
         return;
       }
 
-      // Select tool: a click on empty canvas clears the selection.
-      if (e.target === e.target.getStage()) select([]);
+      /*
+        Select tool on empty canvas: arm a pan rather than acting immediately.
+
+        Dragging the background is what people reach for to move around, and
+        it used to do nothing at all. The click that clears the selection is
+        still there — it just can't be decided until mouseup, once it's known
+        whether the pointer travelled. Starting on an item is left alone, so
+        dragging furniture still moves furniture.
+      */
+      if (e.target === e.target.getStage()) beginPan(e.evt, true);
     },
     [
       tool,
+      panMode,
       draft,
       room,
       settings,
@@ -228,31 +331,55 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
       draftAdd,
       draftFinish,
       edit,
-      select,
+      beginPan,
       vp,
       toleranceMm,
     ],
   );
 
   const handleMouseMove = useCallback(() => {
-    if (panning.current) return;
+    // Nothing to aim while the pointer is panning. Recording a snap point here
+    // would leave it pinned to a world position that the next drag slides out
+    // from under the cursor.
+    if (panning.current || panMode) return;
     const resolved = resolvePointer();
     if (!resolved) return;
     setSnap(resolved.snapped);
     if (draft) draftHover(resolved.snapped.point);
-  }, [resolvePointer, draft, draftHover]);
+  }, [panMode, resolvePointer, draft, draftHover]);
 
   // Panning is tracked on the window so the drag survives leaving the canvas.
   useEffect(() => {
     function onMove(e: MouseEvent) {
       const pan = panning.current;
       if (!pan) return;
-      useViewport
-        .getState()
-        .setPan(pan.originX + (e.clientX - pan.startX), pan.originY + (e.clientY - pan.startY));
+
+      const dx = e.clientX - pan.startX;
+      const dy = e.clientY - pan.startY;
+
+      /*
+        Hold still until the pointer has actually travelled.
+
+        Without this, the couple of pixels a hand contributes while pressing
+        the button would shift the view under every click, and a click meant
+        to deselect would register as a drag and never clear anything.
+      */
+      if (!pan.moved) {
+        if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
+        pan.moved = true;
+        // For the select tool's implied pan, this is the moment it stops
+        // being a click; explicit pans closed the hand on the press already.
+        setGrabbing(true);
+      }
+
+      useViewport.getState().setPan(pan.originX + dx, pan.originY + dy);
     }
     function onUp() {
+      const pan = panning.current;
       panning.current = null;
+      setGrabbing(false);
+      // A press that never moved was a click all along.
+      if (pan && pan.clearOnClick && !pan.moved) useEditor.getState().select([]);
     }
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
@@ -425,7 +552,15 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
 
   if (!project || !room || !settings) return null;
 
-  const cursor = tool === 'wall' ? 'crosshair' : tool === 'select' ? 'default' : 'copy';
+  const cursor = grabbing
+    ? 'grabbing'
+    : panMode
+      ? 'grab'
+      : tool === 'wall'
+        ? 'crosshair'
+        : tool === 'select'
+          ? 'default'
+          : 'copy';
 
   return (
     <div
@@ -473,7 +608,14 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
           <FloorLayer room={room} />
         </Layer>
 
-        <Layer>
+        {/*
+          In pan mode the whole interactive layer stops listening, so every
+          press lands on the stage and pans. Nothing in here can then be
+          clicked, double-clicked or dragged mid-pan — including shapes added
+          to this layer later, which is why it's one switch here rather than a
+          prop each piece has to remember to honour.
+        */}
+        <Layer listening={!panMode}>
           <WallLayer
             room={room}
             vp={vp}
@@ -548,32 +690,101 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
           {draft && (
             <DraftLayer
               points={draft.points}
-              hover={draft.hover}
+              hover={panMode ? null : draft.hover}
               vp={vp}
               units={settings.units}
               thickness={settings.defaultWallThickness}
               willClose={willClose}
             />
           )}
-          {tool !== 'select' && snap && !exporting && (
-            <SnapMarker point={snap.point} vp={vp} kind={snap.kind} />
-          )}
+          {(tool === 'wall' || tool === 'door' || tool === 'window') &&
+            !panMode &&
+            snap &&
+            !exporting && <SnapMarker point={snap.point} vp={vp} kind={snap.kind} />}
         </Layer>
       </Stage>
 
-      {tool === 'wall' && (
+      {/*
+        The hint describes what the pointer is doing right now, so a held
+        Space overrides the tool's own hint — the mouse really is panning.
+      */}
+      {panMode ? (
         <div className="canvas-hint">
-          Click to place corners · <b>Shift</b> locks to 90° · click the first point or press{' '}
-          <b>Enter</b> to finish · <b>Esc</b> cancels
+          {spaceHeld && tool !== 'pan' ? (
+            <>
+              Drag to move the view · release <b>Space</b> to carry on
+            </>
+          ) : (
+            <>
+              Drag to move the view · <b>M</b> or <b>Esc</b> for the pointer
+            </>
+          )}
         </div>
+      ) : (
+        <>
+          {tool === 'wall' && (
+            <div className="canvas-hint">
+              Click to place corners · <b>Shift</b> locks to 90° · click the first point or
+              press <b>Enter</b> to finish · <b>Esc</b> cancels
+            </div>
+          )}
+          {(tool === 'door' || tool === 'window') && (
+            <div className="canvas-hint">
+              Click a wall to place a {tool} · <b>Esc</b> to stop
+            </div>
+          )}
+        </>
       )}
-      {(tool === 'door' || tool === 'window') && (
-        <div className="canvas-hint">
-          Click a wall to place a {tool} · <b>Esc</b> to stop
-        </div>
-      )}
+
+      {/*
+        View controls sit on the canvas rather than in a side panel: they act
+        on what you're looking at, so they belong next to it.
+      */}
+      <div className="canvas-toolbar" role="toolbar" aria-label="View controls">
+        <button
+          className={tool === 'select' ? 'tool active' : 'tool'}
+          aria-pressed={tool === 'select'}
+          title="Select and move items — M. Esc clears the selection."
+          onMouseDown={keepFocus}
+          onClick={() => setTool('select')}
+        >
+          Select <span className="key">M</span>
+        </button>
+        <button
+          className={tool === 'pan' ? 'tool active' : 'tool'}
+          aria-pressed={tool === 'pan'}
+          title="Move the view — P, or hold Space, or drag an empty part of the plan"
+          onMouseDown={keepFocus}
+          onClick={() => setTool('pan')}
+        >
+          Pan <span className="key">P</span>
+        </button>
+
+        <span className="toolbar-sep" aria-hidden="true" />
+
+        <button
+          className="tool"
+          disabled={!canFit}
+          title="Frame the whole room in the view"
+          onMouseDown={keepFocus}
+          onClick={fitRoomToView}
+        >
+          Fit to view
+        </button>
+      </div>
     </div>
   );
+}
+
+/**
+ * Stop a mouse click from focusing a canvas toolbar button.
+ *
+ * A focused button owns Space, and the next Space after clicking "Pan" should
+ * pan rather than click it again. Keyboard users still reach these by Tab —
+ * this only affects focus that arrives by mouse.
+ */
+function keepFocus(e: React.MouseEvent): void {
+  e.preventDefault();
 }
 
 /** Frame the room in the viewport; exported so the toolbar can call it. */

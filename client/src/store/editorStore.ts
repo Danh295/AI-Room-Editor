@@ -12,7 +12,10 @@ import {
 import { api } from '../api.js';
 
 /** Which pointer gesture the canvas is currently interpreting. */
-export type Tool = 'select' | 'wall' | 'door' | 'window';
+export type Tool = 'select' | 'pan' | 'wall' | 'door' | 'window';
+
+/** Tools that put something new into the room, as opposed to navigating it. */
+const DRAWING_TOOLS: ReadonlySet<Tool> = new Set<Tool>(['wall', 'door', 'window']);
 
 /**
  * A wall chain being drawn, held outside the project on purpose.
@@ -129,8 +132,8 @@ export interface EditorState {
   clearSelection: () => void;
   /**
    * What Esc means: undo one level of "what I'm in the middle of". A draft is
-   * abandoned first; with none, a drawing tool drops back to the pointer;
-   * already on the pointer, the selection clears.
+   * abandoned first; with none, a non-pointer tool drops back to the pointer
+   * (selection kept); already on the pointer, the selection clears.
    */
   escape: () => void;
 
@@ -465,8 +468,18 @@ export const useEditor = create<EditorState>((set, get) => {
 
     setTool(tool) {
       // Switching away mid-chain would strand the draft with no way to finish
-      // or discard it, so drop it.
-      set({ tool, draft: null, selection: [] });
+      // or discard it, so drop it regardless of where the tool is headed.
+      //
+      // The selection is different: it's only cleared when *drawing* starts,
+      // not when the pointer or pan tool takes over. Losing a selection
+      // because you moved the view is exactly the kind of thing that makes
+      // people stop trusting a tool.
+      const { selection } = get();
+      set({
+        tool,
+        draft: null,
+        selection: DRAWING_TOOLS.has(tool) ? [] : selection,
+      });
     },
 
     draftStart(point) {
@@ -555,11 +568,10 @@ export const useEditor = create<EditorState>((set, get) => {
 
     escape() {
       /*
-        Spelled out as its own action rather than left implicit in the key
-        handler. Esc used to deselect only because switching to the pointer
-        happened to clear the selection as a side effect of setTool — which
-        made the one behaviour depend on an incidental detail of the other,
-        and was untestable where it lived.
+        Spelled out rather than left to `setTool` side effects. Esc used to
+        deselect only because switching to the pointer happened to clear the
+        selection; once switching tools stopped doing that, Esc quietly
+        stopped deselecting at all.
       */
       const { draft, tool } = get();
       if (draft) {

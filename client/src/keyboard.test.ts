@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isTextEntry } from './keyboard.js';
+import { isTextEntry, ownsSpace } from './keyboard.js';
 
 /** A stand-in element: enough of the DOM surface for the rules to read. */
 function el(
@@ -28,5 +28,24 @@ describe('isTextEntry', () => {
     expect(isTextEntry(el('BUTTON'))).toBe(false);
     expect(isTextEntry(el('DIV'))).toBe(false);
     expect(isTextEntry(null)).toBe(false);
+  });
+});
+
+describe('ownsSpace', () => {
+  it('gives Space to a focused button, which is not text entry', () => {
+    // The regression: Space-to-pan used to swallow Space on every button.
+    const button = el('BUTTON', { matches: true });
+    expect(isTextEntry(button)).toBe(false);
+    expect(ownsSpace(button)).toBe(true);
+  });
+
+  it('gives Space to text fields', () => {
+    expect(ownsSpace(el('INPUT'))).toBe(true);
+  });
+
+  it('leaves Space free on the page body and the canvas', () => {
+    expect(ownsSpace(el('BODY'))).toBe(false);
+    expect(ownsSpace(el('CANVAS'))).toBe(false);
+    expect(ownsSpace(null)).toBe(false);
   });
 });

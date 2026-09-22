@@ -211,6 +211,46 @@ describe('placements', () => {
   });
 });
 
+describe('setTool', () => {
+  function selectSomething(): string {
+    const item = useEditor.getState().library[0]!;
+    const id = useEditor.getState().placeInRoom(item.id, 0, 0)!;
+    useEditor.getState().select([id]);
+    return id;
+  }
+
+  it('keeps the selection when only the pointer changes', () => {
+    const id = selectSomething();
+
+    // Panning is navigation. Losing what you had selected because you moved
+    // the view is the kind of thing that makes people distrust a tool.
+    useEditor.getState().setTool('pan');
+    expect(useEditor.getState().selection).toEqual([id]);
+
+    useEditor.getState().setTool('select');
+    expect(useEditor.getState().selection).toEqual([id]);
+  });
+
+  it('clears the selection when a drawing tool takes over', () => {
+    selectSomething();
+    useEditor.getState().setTool('wall');
+    expect(useEditor.getState().selection).toEqual([]);
+  });
+
+  it('drops an in-progress draft whatever the new tool is', () => {
+    for (const tool of ['pan', 'select', 'door'] as const) {
+      useEditor.getState().draftStart({ x: 0, y: 0 });
+      useEditor.getState().draftAdd({ x: 500, y: 0 });
+      expect(useEditor.getState().draft).not.toBeNull();
+
+      // A half-drawn chain left behind a tool switch could never be finished
+      // or discarded.
+      useEditor.getState().setTool(tool);
+      expect(useEditor.getState().draft).toBeNull();
+    }
+  });
+});
+
 describe('escape', () => {
   function selectSomething(): string {
     const item = useEditor.getState().library[0]!;
@@ -229,15 +269,19 @@ describe('escape', () => {
     expect(useEditor.getState().tool).toBe('wall');
   });
 
-  it('drops a drawing tool back to the pointer', () => {
-    useEditor.getState().setTool('door');
+  it('drops the pan tool back to the pointer, keeping the selection', () => {
+    const id = selectSomething();
+    useEditor.getState().setTool('pan');
 
     useEditor.getState().escape();
 
     expect(useEditor.getState().tool).toBe('select');
+    expect(useEditor.getState().selection).toEqual([id]);
   });
 
   it('clears the selection once already on the pointer', () => {
+    // The regression: Esc deselected only as a side effect of setTool, and
+    // stopped doing so when setTool learned to keep the selection.
     selectSomething();
     expect(useEditor.getState().tool).toBe('select');
 

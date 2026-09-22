@@ -198,12 +198,11 @@ export default function RoomPanel() {
         <b>{formatLength(room.ceilingHeight, units)}</b>
       </div>
 
+      {/* Fit to view now lives on the canvas toolbar, with the other controls
+          that act on the view rather than on the room. */}
       <div className="button-row">
         <button onClick={() => setQuickOpen(true)}>Quick room…</button>
         <button onClick={() => setTraceOpen(true)}>Trace a plan…</button>
-        <button onClick={fitRoomToView} disabled={polygon.length === 0}>
-          Fit to view
-        </button>
       </div>
 
       {selectedWall && (

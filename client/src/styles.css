@@ -1,6 +1,8 @@
 :root {
   --bg: #14161a;
   --panel: #1b1e24;
+  /* --panel, slightly see-through, for panels that float over the plan. */
+  --panel-overlay: color-mix(in srgb, var(--panel) 94%, transparent);
   --panel-2: #22262e;
   --line: #2e333d;
   --text: #e6e8ec;
@@ -279,22 +281,27 @@ select:focus {
 }
 
 .canvas-hint,
-.canvas-empty {
+.canvas-empty,
+.canvas-toolbar {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(27, 30, 36, 0.94);
+  background: var(--panel-overlay);
   border: 1px solid var(--line);
   border-radius: var(--radius);
+  white-space: nowrap;
+}
+
+.canvas-hint,
+.canvas-empty {
   padding: 7px 12px;
   font-size: 12px;
   color: var(--muted);
   pointer-events: none;
-  white-space: nowrap;
 }
 
 .canvas-hint {
-  bottom: 14px;
+  bottom: 62px;
 }
 
 .canvas-empty {
@@ -883,4 +890,41 @@ a {
   min-width: 0;
   padding: 2px 6px;
   font: inherit;
+}
+
+/* --------------------------------------------------------- canvas toolbar */
+
+/*
+  Floats over the plan at the bottom edge; the shared floating-panel look is
+  in the .canvas-hint rule above. The hint is pointer-events: none so it can
+  overlap harmlessly, but this bar takes clicks, so it's lifted above the
+  Konva stage explicitly rather than relying on DOM order to win.
+*/
+.canvas-toolbar {
+  z-index: 1;
+  bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+/* The shortcut letter rides along with the label, dimmed so it reads as a
+   footnote rather than part of the name. */
+.canvas-toolbar .key {
+  margin-left: 5px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.canvas-toolbar .tool.active .key {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.toolbar-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 2px 4px;
+  background: var(--line);
 }
