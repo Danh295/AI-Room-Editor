@@ -2,9 +2,10 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    // The store is plain TypeScript; the pieces under test here deliberately
-    // don't touch the DOM, so there's no reason to pay for jsdom.
+    // Node by default: the store and the keyboard rules are plain TypeScript
+    // and don't need a DOM. Component tests opt into jsdom per file with a
+    // `@vitest-environment jsdom` docblock, so only they pay for it.
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
   },
 });
