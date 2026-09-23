@@ -32,6 +32,45 @@ The first run copies a small starter furniture library into `data/library/` so
 there's something to place. Replace it with your own pieces whenever you like —
 it's only copied when no library file exists.
 
+If you add a key while the server is running, restart it: `.env` is read once
+at startup, and the "No AI key set" banner stays until you do.
+
+## Using it
+
+**Getting around.** Drag any empty part of the plan to move the view, or press
+`P` for the pan tool, which drags from anywhere. Hold `Space` to pan for a
+moment from any tool, even halfway through drawing walls, and let go to carry
+on where you were. The middle mouse button pans too. The wheel zooms at the
+cursor, and **Fit to view** on the bar at the bottom of the plan frames the
+whole room.
+
+**Adding things.** Pick **Wall**, **Door** or **Window** from the top bar. For a
+room in one step, use **Quick room…**; to start from a drawing, **Trace a plan…**.
+Furniture comes from the library on the left: drag a piece onto the plan, or
+double-click it to drop it in the middle. **AI lookup** finds a real product
+from a link, a model number or a photo, and shows you everything it found to
+check before anything is saved.
+
+**Editing.** Click to select and Shift-click to add to the selection. Drag
+furniture to move it, and it snaps to walls and to other pieces. Double-click
+a wall to type its exact length. Everything else — size, clearances, colour,
+shape, layer — is in the panel on the right.
+
+| Key                           | Does                                                                                       |
+| ----------------------------- | ------------------------------------------------------------------------------------------ |
+| `M` or `V`                    | Pointer: select and move                                                                   |
+| `P`                           | Pan tool                                                                                   |
+| `Space` (hold)                | Pan for a moment, from any tool                                                            |
+| `W` · `D` · `N`               | Wall · Door · Window                                                                       |
+| `Esc`                         | Step back: cancel the wall you're drawing, then leave the tool, then clear the selection   |
+| `Enter`                       | Finish the wall chain you're drawing                                                       |
+| `Shift` (while drawing walls) | Lock to 90°                                                                                |
+| `Backspace` / `Delete`        | While drawing, remove the last corner; otherwise delete the selection (locked pieces stay) |
+| `[` · `]`                     | Rotate the selection 15°                                                                   |
+| Arrow keys                    | Nudge the selection 1″ — hold `Shift` for 6″                                               |
+| `Ctrl`/`Cmd` + `D`            | Duplicate the selection                                                                    |
+| `Ctrl`/`Cmd` + `Z`            | Undo — add `Shift`, or use `Ctrl`/`Cmd` + `Y`, to redo                                     |
+
 ## Running it for real
 
 ```bash
