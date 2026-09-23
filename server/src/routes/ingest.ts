@@ -250,9 +250,25 @@ ingestRouter.post('/product', async (req, res) => {
       schema: PRODUCT_SCHEMA as unknown as Record<string, unknown>,
     });
 
-    const confidence = extracted.confidence ?? 'low';
+    /*
+      A photo lookup has a step the others don't: deciding which product is
+      in the picture. The model's confidence only speaks to what it found
+      after that — "high" means the dimensions came off a manufacturer's spec
+      sheet — and says nothing about whether the identification was right.
+      Left alone, a guess from a photo showed up as "high" on every field. So
+      a photo never rates above "medium", and the review card says why.
+    */
+    const identifiedFromPhoto = method === 'photo';
+    const modelConfidence: Confidence = extracted.confidence ?? 'low';
+    const confidence: Confidence =
+      identifiedFromPhoto && modelConfidence === 'high' ? 'medium' : modelConfidence;
     const primary = research.citations[0];
     const warnings = [...(extracted.warnings ?? []), ...sanityWarnings(extracted)];
+    if (identifiedFromPhoto) {
+      warnings.push(
+        'Identified from a photo — check this is the same product before trusting its dimensions.',
+      );
+    }
     if (research.citations.length === 0) {
       warnings.push('No sources were cited — treat these dimensions as unverified.');
     }
@@ -474,7 +490,7 @@ ingestRouter.post('/floorplan', async (req, res) => {
       if (err instanceof AiError && (err.kind === 'quota' || err.kind === 'unavailable')) {
         result = await provider.extract<Trace>({ prompt, schema, image });
         degraded.push(
-          `The accurate tracing model was unavailable, so a weaker one was used — expect corners to be noticeably off. Drag them onto the underlay to fix.`,
+          `The accurate tracing model was unavailable, so a weaker one was used — expect the outline to be noticeably off, sometimes including its shape and corner count. Drag the corners onto the underlay to fix.`,
         );
       } else {
         throw err;
@@ -508,17 +524,26 @@ ingestRouter.post('/floorplan', async (req, res) => {
       So the honest framing is that the trace finds the room's shape, and the
       user supplies the precision by dragging corners onto the underlay. Saying
       "approximate" would let someone assume it means a few millimetres.
+
+      All of that was measured on the vision model. The fallback isn't held to
+      it: live, it shrank a 12' x 10' room by up to 30% and invented a notch
+      where the door swing was drawn. So after a fallback the "shape is
+      dependable" claim is withheld, and so is the model's own confidence,
+      which it reported as "high" for that very trace.
     */
-    warnings.push(
-      'The shape and the number of corners are dependable; the exact positions are not — expect the outline to be off by a few percent, and the area by more. Drag each corner onto the underlay image before trusting any dimension.',
-    );
+    const fellBack = degraded.length > 0;
+    if (!fellBack) {
+      warnings.push(
+        'The shape and the number of corners are dependable; the exact positions are not — expect the outline to be off by a few percent, and the area by more. Drag each corner onto the underlay image before trusting any dimension.',
+      );
+    }
 
     return res.json({
       polygonPx: polygon,
       openings: result.openings ?? [],
       readDimensions: result.readDimensions ?? [],
       scaleMmPerPx: result.scaleMmPerPx ?? null,
-      confidence: result.confidence ?? 'low',
+      confidence: fellBack ? 'low' : (result.confidence ?? 'low'),
       warnings,
     });
   } catch (err) {
