@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Stage, Layer, Rect } from 'react-konva';
-import type Konva from 'konva';
+import Konva from 'konva';
 import type { Pt } from '@room/shared';
 import {
   distance,
@@ -41,6 +41,17 @@ const DRAG_THRESHOLD_PX = 3;
 
 const DEFAULT_DOOR_WIDTH = Math.round(32 * MM_PER_INCH);
 const DEFAULT_WINDOW_WIDTH = Math.round(36 * MM_PER_INCH);
+
+/*
+  Only the left button drags things on the plan.
+
+  Konva's default is [0, 1]: the middle button drags nodes too. Here middle
+  pans the view, so a middle-drag that began on a sofa used to do both at
+  once — the view panned and the sofa was carried along with it, then saved
+  in its new place. Global because it's Konva's own setting, and set at
+  module load so it's in force before the first stage exists.
+*/
+Konva.dragButtons = [0];
 
 export interface PlanCanvasProps {
   /** Opens the length editor for a wall; owned by the parent so it can render UI. */
@@ -614,8 +625,16 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
           clicked, double-clicked or dragged mid-pan — including shapes added
           to this layer later, which is why it's one switch here rather than a
           prop each piece has to remember to honour.
+
+          It also stops listening for the length of any pan in progress. Konva
+          fires `click` on release for every mouse button, with no check for
+          movement — only that press and release landed on the same shape, and
+          a pan keeps the grabbed point under the cursor, so they always do. A
+          middle- or right-drag that began on a wall or a sofa used to select
+          it on release. Those pans close the hand on the press, so by release
+          the layer has stopped listening and there's nothing to click.
         */}
-        <Layer listening={!panMode}>
+        <Layer listening={!panMode && !grabbing}>
           <WallLayer
             room={room}
             vp={vp}
