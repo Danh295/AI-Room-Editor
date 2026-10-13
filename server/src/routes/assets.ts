@@ -142,7 +142,8 @@ export async function storeImageFromUrl(
   try {
     buffer = await readCapped(response, MAX_DOWNLOAD_BYTES);
   } catch (err) {
-    if (/too large/.test((err as Error).message)) throw new Error('image too large', { cause: err });
+    if (/too large/.test((err as Error).message))
+      throw new Error('image too large', { cause: err });
     throw err;
   }
   if (buffer.length === 0) throw new Error('empty image');

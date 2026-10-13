@@ -332,3 +332,51 @@ describe('chains', () => {
     expect(room.walls).toHaveLength(1);
   });
 });
+
+describe('openings follow their wall', () => {
+  it('pulls a door back onto a wall that was typed shorter', () => {
+    const room = rectangularRoom(4000, 3000);
+    const top = room.walls[0]!;
+    const door = addOpening(room, top.id, { kind: 'door', offset: 3000, width: 800 })!;
+
+    setWallLength(room, top.id, 2000);
+
+    expect(door.offset + door.width).toBeLessThanOrEqual(2000);
+    expect(door.width).toBe(800);
+  });
+
+  it('pulls a window back when a corner is dragged inward', () => {
+    const room = rectangularRoom(4000, 3000);
+    const top = room.walls[0]!;
+    const win = addOpening(room, top.id, { kind: 'window', offset: 3000, width: 900 })!;
+
+    moveVertex(room, top.b, { x: 2500, y: 0 });
+
+    expect(win.offset + win.width).toBeLessThanOrEqual(wallLength(room, top));
+  });
+
+  it('narrows an opening only when the wall is now narrower than it', () => {
+    const room = rectangularRoom(4000, 3000);
+    const top = room.walls[0]!;
+    const win = addOpening(room, top.id, { kind: 'window', offset: 0, width: 1500 })!;
+
+    moveVertex(room, top.b, { x: 1000, y: 0 });
+
+    expect(win.width).toBe(1000);
+    expect(win.offset).toBe(0);
+  });
+
+  it('keeps an opening that straddles a split on one half, fully', () => {
+    const room = rectangularRoom(4000, 3000);
+    const wallId = room.walls[0]!.id;
+    const door = addOpening(room, wallId, { kind: 'door', offset: 1700, width: 800 })!;
+
+    splitWall(room, wallId, { x: 2000, y: 0 });
+
+    // Its centre (2100) is past the split, so it goes to the second half.
+    const half = room.walls.find((w) => w.id === door.wallId)!;
+    expect(half.id).not.toBe(wallId);
+    expect(door.offset).toBeGreaterThanOrEqual(0);
+    expect(door.offset + door.width).toBeLessThanOrEqual(wallLength(room, half));
+  });
+});
