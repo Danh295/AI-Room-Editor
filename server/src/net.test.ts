@@ -9,7 +9,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const lookup = vi.hoisted(() => vi.fn());
 vi.mock('node:dns/promises', () => ({ lookup }));
 
-const { assertFetchableUrl, assertPublicHost, safeFetch } = await import('./net.js');
+const { assertFetchableUrl, assertPublicHost, readCapped, safeFetch } =
+  await import('./net.js');
 
 /** Answer every resolution with one address. */
 function resolvesTo(address: string, family = 4) {
@@ -149,5 +150,36 @@ describe('safeFetch', () => {
     fetchMock.mockResolvedValueOnce(new Response('ok', { status: 200 }));
     await safeFetch('https://example.com/');
     expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ redirect: 'manual' });
+  });
+});
+
+describe('readCapped', () => {
+  /** A body delivered in chunks, the way a real network stream arrives. */
+  function chunked(sizes: number[], headers: Record<string, string> = {}): Response {
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const size of sizes) controller.enqueue(new Uint8Array(size).fill(97));
+        controller.close();
+      },
+    });
+    return new Response(stream, { headers });
+  }
+
+  it('returns a body within the cap', async () => {
+    expect((await readCapped(chunked([10, 10]), 100)).length).toBe(20);
+  });
+
+  it('refuses a body that grows past the cap mid-stream', async () => {
+    await expect(readCapped(chunked([60, 60]), 100)).rejects.toThrow(/too large/);
+  });
+
+  it('refuses up front when the declared length is already too big', async () => {
+    const res = chunked([1], { 'content-length': '5000' });
+    await expect(readCapped(res, 100)).rejects.toThrow(/too large/);
+  });
+
+  it('stops at the cap when asked to truncate', async () => {
+    const body = await readCapped(chunked([60, 60, 60]), 100, { truncate: true });
+    expect(body.length).toBe(100);
   });
 });

@@ -10,6 +10,7 @@ process.env.ROOM_DATA_DIR = dataDir;
 
 const { createApp } = await import('../app.js');
 const { ensureDataDirs } = await import('../paths.js');
+const { rasterFormat } = await import('./assets.js');
 
 const app = createApp();
 
@@ -108,5 +109,22 @@ describe('POST /api/assets/fetch', () => {
 
   it('needs a url', async () => {
     await request(app).post('/api/assets/fetch').send({}).expect(400);
+  });
+});
+
+describe('raster-only decoding', () => {
+  it('recognizes the raster formats by their magic numbers', async () => {
+    const png = Buffer.from(await samplePng(), 'base64');
+    expect(rasterFormat(png)).toBe('png');
+    expect(rasterFormat(Buffer.from([0xff, 0xd8, 0xff, 0xe0]))).toBe('jpeg');
+  });
+
+  it('refuses SVG instead of handing it to librsvg', async () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"/>';
+    expect(rasterFormat(Buffer.from(svg))).toBeNull();
+    await request(app)
+      .post('/api/assets/upload')
+      .send({ dataBase64: Buffer.from(svg).toString('base64') })
+      .expect(400);
   });
 });
