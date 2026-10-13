@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage --coverage.reporter=text-summary --coverage.reporter=html"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.2",

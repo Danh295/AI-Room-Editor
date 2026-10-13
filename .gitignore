@@ -24,3 +24,9 @@ npm-debug.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# end-to-end test runs
+e2e/.data/
+test-results/
+playwright-report/
+coverage/

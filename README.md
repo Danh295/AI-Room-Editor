@@ -145,13 +145,17 @@ address is refused if it's private or loopback.
 
 ```bash
 npm test         # shared logic, server routes, client store
+npm run coverage # the same, with a coverage summary per workspace
+npm run e2e      # builds, then drives the real app in Chromium (Playwright)
 npm run typecheck
 npm run lint     # oxlint; catches rules-of-hooks, which tsc can't see
-npm run format   # prettier (the tree isn't formatted yet — expect a big diff)
+npm run format   # prettier
 ```
 
-CI runs typecheck, lint, tests, a production build, and a smoke test that the
-built server really serves the built client.
+CI runs, on Node 20.19 and 22: an audit of runtime dependencies, typecheck,
+lint, tests with coverage, a production build, and a smoke test that the built
+server really serves the built client. Then the end-to-end tests run against
+that build in Chromium. Dependabot watches npm and the Actions versions.
 
 ### Notes for future work
 
@@ -159,5 +163,3 @@ built server really serves the built client.
   `PUT /api/projects/:id` is unauthenticated and writes straight to a file
   named by the caller; hosting this for more than one person means auth on
   every route plus per-user scoping in `server/src/storage.ts`.
-- Prettier is configured but has never been run across the tree. Doing it is
-  one commit, best taken on its own.

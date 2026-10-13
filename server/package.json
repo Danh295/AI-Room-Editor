@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/index.js --external:express --external:cors --external:sharp --external:dotenv --external:@google/genai"
+    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/index.js --external:express --external:cors --external:sharp --external:dotenv --external:@google/genai",
+    "coverage": "vitest run --coverage --coverage.reporter=text-summary --coverage.reporter=html"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

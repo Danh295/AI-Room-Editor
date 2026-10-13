@@ -12,6 +12,7 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "coverage": "vitest run --coverage --coverage.reporter=text-summary --coverage.reporter=html"
   }
 }
