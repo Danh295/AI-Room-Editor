@@ -256,6 +256,21 @@ export interface PageMeta {
   siteName?: string;
 }
 
+/**
+ * Decode a body in the charset its Content-Type names, as `response.text()`
+ * would. Plenty of retailers still serve windows-1252 or Shift_JIS, and
+ * reading those as UTF-8 garbles the product title. Unknown labels fall back
+ * to UTF-8.
+ */
+function decodeText(bytes: Buffer, contentType: string | null): string {
+  const charset = contentType?.match(/charset\s*=\s*"?([^";\s]+)/i)?.[1] ?? 'utf-8';
+  try {
+    return new TextDecoder(charset).decode(bytes);
+  } catch {
+    return new TextDecoder('utf-8').decode(bytes);
+  }
+}
+
 /** Grab a few `<meta>` values without pulling in a DOM parser. */
 function metaContent(html: string, patterns: RegExp[]): string | undefined {
   for (const pattern of patterns) {
@@ -294,7 +309,10 @@ export async function fetchPageMeta(rawUrl: string): Promise<PageMeta> {
   const url = new URL(finalUrl);
 
   // Product pages are large and everything useful is in <head>; stop early.
-  const html = (await readCapped(response, 200_000, { truncate: true })).toString('utf8');
+  const html = decodeText(
+    await readCapped(response, 200_000, { truncate: true }),
+    response.headers.get('content-type'),
+  );
 
   const imageRaw = metaContent(html, [
     /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i,

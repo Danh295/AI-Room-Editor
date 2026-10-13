@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const lookup = vi.hoisted(() => vi.fn());
 vi.mock('node:dns/promises', () => ({ lookup }));
 
-const { assertFetchableUrl, assertPublicHost, readCapped, safeFetch } =
+const { assertFetchableUrl, assertPublicHost, fetchPageMeta, readCapped, safeFetch } =
   await import('./net.js');
 
 /** Answer every resolution with one address. */
@@ -181,5 +181,21 @@ describe('readCapped', () => {
   it('stops at the cap when asked to truncate', async () => {
     const body = await readCapped(chunked([60, 60, 60]), 100, { truncate: true });
     expect(body.length).toBe(100);
+  });
+});
+
+describe('fetchPageMeta', () => {
+  it('decodes the page in the charset it declares', async () => {
+    // "Café Table" in windows-1252: é is the single byte 0xE9.
+    const html = Buffer.concat([
+      Buffer.from('<html><head><title>Caf'),
+      Buffer.from([0xe9]),
+      Buffer.from(' Table</title></head></html>'),
+    ]);
+    fetchMock.mockResolvedValue(
+      new Response(html, { headers: { 'content-type': 'text/html; charset=windows-1252' } }),
+    );
+    const meta = await fetchPageMeta('https://shop.example/table');
+    expect(meta.title).toBe('Café Table');
   });
 });

@@ -137,6 +137,16 @@ describe('projects', () => {
     await request(app).put(`/api/projects/${project.id}`).send(project).expect(409);
   });
 
+  it('says "newer version" even when the newer shape fails validation here', async () => {
+    const project = {
+      ...sampleProject(),
+      schemaVersion: 99,
+      room: { shape: 'from the future' },
+    };
+    const res = await request(app).put(`/api/projects/${project.id}`).send(project).expect(409);
+    expect(res.body.error).toMatch(/newer version/);
+  });
+
   it('stamps the schema version on save, and adds it to older files on read', async () => {
     const project = sampleProject();
     const put = await request(app).put(`/api/projects/${project.id}`).send(project).expect(200);

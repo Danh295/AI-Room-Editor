@@ -6,6 +6,7 @@ import {
   distance,
   moveVertex,
   refitOpenings,
+  wallsNear,
   roomPolygon,
   exteriorPolygon,
   addOpeningNearPoint,
@@ -467,6 +468,9 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  /** The corner being dragged, so the end of the drag knows which walls changed. */
+  const draggedVertex = useRef<string | null>(null);
+
   const handleVertexDragMove = useCallback(
     (vertexId: string, point: Pt) => {
       if (!room || !settings) return;
@@ -477,6 +481,7 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
         toleranceMm,
         exclude: new Set([vertexId]),
       });
+      draggedVertex.current = vertexId;
       edit((d) => {
         moveVertex(d.room, vertexId, snapped.point);
       });
@@ -484,14 +489,19 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
     [room, settings, edit, toleranceMm],
   );
 
-  /** Finish a corner drag: pull openings back onto any wall it shortened. */
+  /**
+   * Finish a corner drag: pull openings back onto the walls it changed. Only
+   * those: refitting every wall would also move openings elsewhere in the
+   * room that the drag never touched.
+   */
   const handleVertexDragEnd = useCallback(() => {
-    edit((d) => {
-      refitOpenings(
-        d.room,
-        d.room.walls.map((w) => w.id),
-      );
-    });
+    const vertexId = draggedVertex.current;
+    draggedVertex.current = null;
+    if (vertexId) {
+      edit((d) => {
+        refitOpenings(d.room, wallsNear(d.room, [vertexId]));
+      });
+    }
     endGesture();
   }, [edit, endGesture]);
 
