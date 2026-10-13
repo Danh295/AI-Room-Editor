@@ -357,15 +357,47 @@ export function interiorArea(room: Room): number {
 }
 
 /**
- * A wall's inside face, from its `a` end to its `b` end. For a wall that isn't
- * part of a closed loop there's no inside yet, so this is its centreline.
+ * Every wall's inside face, from its `a` end to its `b` end, computed in one
+ * pass. A wall that isn't part of a closed loop has no inside yet, so it gets
+ * its centreline. Use this when drawing all walls; it builds the inset
+ * polygon once rather than once per wall.
  */
-export function interiorWallSegment(room: Room, wall: Wall): Segment | null {
+export function interiorWallSegments(room: Room): Map<string, Segment> {
+  const faces = new Map<string, Segment>();
   const loop = wallLoop(room);
-  const index = loop ? loop.findIndex((w) => w.id === wall.id) : -1;
-  if (!loop || index < 0) return wallSegment(room, wall);
-  const inner = interiorPolygon(room);
-  return { a: inner[index]!, b: inner[(index + 1) % inner.length]! };
+  const inner = loop ? interiorPolygon(room) : [];
+  loop?.forEach((wall, i) => {
+    faces.set(wall.id, { a: inner[i]!, b: inner[(i + 1) % inner.length]! });
+  });
+  for (const wall of room.walls) {
+    if (faces.has(wall.id)) continue;
+    const seg = wallSegment(room, wall);
+    if (seg) faces.set(wall.id, seg);
+  }
+  return faces;
+}
+
+/** One wall's inside face; see `interiorWallSegments`. */
+export function interiorWallSegment(room: Room, wall: Wall): Segment | null {
+  return interiorWallSegments(room).get(wall.id) ?? null;
+}
+
+/**
+ * The stretch of a wall's centreline, measured from its `a` end, that lies
+ * between the inside faces of the walls at either end. An opening has to fit
+ * here: anything nearer the ends is buried in the neighbouring wall.
+ */
+export function interiorSpan(room: Room, wall: Wall): { start: number; end: number } {
+  const seg = wallSegment(room, wall);
+  if (!seg) return { start: 0, end: 0 };
+  const len = distance(seg.a, seg.b);
+  const face = interiorWallSegment(room, wall);
+  if (!face || len < EPS) return { start: 0, end: len };
+  const dir = normalize(sub(seg.b, seg.a));
+  const along = (p: Pt) => dot(sub(p, seg.a), dir);
+  const start = Math.max(0, Math.min(len, along(face.a)));
+  const end = Math.max(start, Math.min(len, along(face.b)));
+  return { start, end };
 }
 
 /** Length of a wall's inside face: what a tape measure along it reads. */

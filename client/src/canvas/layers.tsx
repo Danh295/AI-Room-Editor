@@ -15,7 +15,7 @@ import {
   sub,
   wallInwardNormal,
   wallSegment,
-  interiorWallSegment,
+  interiorWallSegments,
 } from '@room/shared';
 import { visibleWorldRect, type ViewportState } from './viewport.js';
 import { assetUrl } from '../api.js';
@@ -417,13 +417,15 @@ export function DimensionLayer({ room, vp, units }: DimensionProps) {
   const offset = 26 * inv;
   const tick = 5 * inv;
   const fontSize = 12 * inv;
+  // Built once per render: per wall it would redo the whole inset polygon.
+  const faces = interiorWallSegments(room);
 
   return (
     <Group listening={false}>
       {room.walls.map((wall) => {
         // Sizes are the inside faces, the length a tape measure reads; the
         // line is drawn outside the wall with its ends square to those faces.
-        const seg = interiorWallSegment(room, wall);
+        const seg = faces.get(wall.id);
         if (!seg) return null;
 
         const len = distance(seg.a, seg.b);

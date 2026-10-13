@@ -45,6 +45,22 @@ describe('snapItemDrag', () => {
     expect(next.y % 25).toBe(0);
   });
 
+  it('keeps an axis that was already exactly flush with a neighbour', () => {
+    const room = rectangularRoom(8000, 8000);
+    const item = sofa();
+    const anchor: PlacedItem = { ...placeItem(item, 3003, 4000), rotation: 0 };
+    // Dragged to exactly flush (x = 3003 + 2000), on a coarse grid that would
+    // otherwise round it to 4864 or 5016.
+    const placed: PlacedItem = { ...placeItem(item, 5003, 4011), rotation: 0 };
+    const next = snapItemDrag(placed, item, 5003, 4011, {
+      room,
+      settings: { ...settings, gridStep: 152 },
+      others: [{ placed: anchor, item }],
+      toleranceMm: 40,
+    });
+    expect(next.x).toBe(5003);
+  });
+
   it('falls back to the grid when nothing is close', () => {
     const room = rectangularRoom(8000, 8000);
     const item = sofa();

@@ -31,6 +31,8 @@ export function rasterFormat(b: Buffer): string | null {
   if (ascii(4, 8) === 'ftyp' && /^(avif|avis|heic|heix|mif1|msf1)$/.test(ascii(8, 12))) {
     return 'heif';
   }
+  // Scanned floor plans often arrive as TIFF; libtiff, not an XML parser.
+  if (ascii(0, 4) === 'II*\x00' || ascii(0, 4) === 'MM\x00*') return 'tiff';
   return null;
 }
 
@@ -81,7 +83,9 @@ assetsRouter.post('/fetch', async (req, res) => {
       ? 400
       : /too large/.test(message)
         ? 413
-        : 502;
+        : /unsupported image format/.test(message)
+          ? 415
+          : 502;
     return res.status(status).json({ error: message });
   }
 });
@@ -105,7 +109,12 @@ assetsRouter.post('/upload', async (req, res) => {
 
   try {
     return res.json(await storeImage(buffer));
-  } catch {
+  } catch (err) {
+    if (/unsupported image format/.test((err as Error).message)) {
+      return res.status(415).json({
+        error: 'unsupported image format: use JPEG, PNG, WebP, GIF, HEIC/AVIF or TIFF',
+      });
+    }
     return res.status(400).json({ error: 'could not decode that image' });
   }
 });

@@ -410,7 +410,7 @@ describe('saving', () => {
     useEditor.getState().edit((d) => {
       d.name = 'about to be deleted';
     });
-    useEditor.getState().closeProject();
+    void useEditor.getState().closeProject();
 
     await vi.advanceTimersByTimeAsync(2_000);
     expect(saveProject).not.toHaveBeenCalled();
@@ -496,6 +496,55 @@ describe('switching projects', () => {
     await useEditor.getState().loadProject('proj_other');
     expect(useEditor.getState().project?.id).toBe('proj_other');
     expect(useEditor.getState().loadError).toMatch(/refused.*rejected.*bad wall/);
+  });
+
+  it('saves an edit made while the switch was already saving', async () => {
+    let release: (value: Project) => void = () => {};
+    saveProject.mockImplementationOnce(
+      () => new Promise<Project>((resolve) => (release = resolve)),
+    );
+    getProject.mockResolvedValue(other());
+    useEditor.getState().edit((d) => {
+      d.name = 'first';
+    });
+
+    const switching = useEditor.getState().loadProject('proj_other');
+    await vi.advanceTimersByTimeAsync(0);
+    // The user keeps working while the settling save is out.
+    useEditor.getState().edit((d) => {
+      d.name = 'second';
+    });
+    release({ ...useEditor.getState().project!, updatedAt: 'later' });
+    await switching;
+
+    const saved = saveProject.mock.calls.map((c) => (c[0] as Project).name);
+    expect(saved).toContain('second');
+    expect(useEditor.getState().project?.id).toBe('proj_other');
+  });
+
+  it('waits for a save in flight before closing (so a delete lands last)', async () => {
+    let release: (value: Project) => void = () => {};
+    saveProject.mockImplementationOnce(
+      () => new Promise<Project>((resolve) => (release = resolve)),
+    );
+    useEditor.getState().edit((d) => {
+      d.name = 'about to go';
+    });
+    await vi.advanceTimersByTimeAsync(700);
+    const outgoing = useEditor.getState().project!;
+
+    let closed = false;
+    const closing = useEditor
+      .getState()
+      .closeProject()
+      .then(() => (closed = true));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(closed).toBe(false);
+
+    release({ ...outgoing, updatedAt: 'x' });
+    await closing;
+    expect(closed).toBe(true);
+    expect(useEditor.getState().project).toBeNull();
   });
 
   it('saves the outgoing project before starting a new one', async () => {

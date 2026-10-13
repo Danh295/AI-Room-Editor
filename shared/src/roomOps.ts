@@ -18,6 +18,7 @@ import {
   normalize,
   scale,
   sub,
+  interiorSpan,
   interiorWallLength,
   wallLength,
   wallSegment,
@@ -51,12 +52,26 @@ export function refitOpenings(room: Room, wallIds: Iterable<string>): void {
   for (const opening of room.openings) {
     if (!ids.has(opening.wallId)) continue;
     const wall = findWall(room, opening.wallId);
-    const seg = wall && wallSegment(room, wall);
-    if (!seg) continue;
-    const wallLen = distance(seg.a, seg.b);
-    opening.width = Math.round(Math.min(opening.width, wallLen));
-    opening.offset = Math.round(clampOpening(wallLen, opening.offset, opening.width));
+    if (!wall) continue;
+    Object.assign(opening, fitOnWall(room, wall, opening.offset, opening.width));
   }
+}
+
+/**
+ * Where an opening of this width can sit on this wall: between the inside
+ * faces of the walls at each end, since nearer the ends it would be buried in
+ * the neighbouring wall. Offsets stay measured from the centreline's `a` end.
+ */
+function fitOnWall(
+  room: Room,
+  wall: Wall,
+  offset: number,
+  width: number,
+): { offset: number; width: number } {
+  const { start, end } = interiorSpan(room, wall);
+  const fitted = Math.round(Math.min(width, end - start));
+  const clamped = start + clampOpening(end - start, offset - start, fitted);
+  return { offset: Math.round(clamped), width: fitted };
 }
 
 /**
@@ -153,8 +168,17 @@ export function setWallLength(room: Room, wallId: string, newLength: number): bo
 export function setInteriorWallLength(room: Room, wallId: string, newLength: number): boolean {
   const wall = findWall(room, wallId);
   if (!wall || newLength <= 0) return false;
-  const difference = wallLength(room, wall) - interiorWallLength(room, wall);
-  return setWallLength(room, wallId, newLength + difference);
+  // Exact in one step when the neighbours are square to this wall. At any
+  // other angle the neighbouring wall pivots and the inside corner moves a
+  // little more or less than the end did, so correct by what's left over.
+  let changed = false;
+  for (let i = 0; i < 4; i += 1) {
+    const error = newLength - interiorWallLength(room, wall);
+    if (Math.abs(error) < 0.5) break;
+    if (!setWallLength(room, wallId, wallLength(room, wall) + error)) break;
+    changed = true;
+  }
+  return changed;
 }
 
 /**
@@ -282,17 +306,17 @@ export function addOpening(
 ): Opening | null {
   const wall = findWall(room, wallId);
   if (!wall) return null;
-  const seg = wallSegment(room, wall);
-  if (!seg) return null;
+  if (!wallSegment(room, wall)) return null;
 
-  const wallLen = distance(seg.a, seg.b);
-  if (options.width >= wallLen) return null; // wouldn't leave any wall behind
+  const { start, end } = interiorSpan(room, wall);
+  if (options.width >= end - start) return null; // wouldn't leave any wall behind
+  const fitted = fitOnWall(room, wall, options.offset, options.width);
 
   const opening: Opening = {
     id: newId('op'),
     wallId,
-    offset: clampOpening(wallLen, options.offset, options.width),
-    width: options.width,
+    offset: fitted.offset,
+    width: fitted.width,
     kind: options.kind,
     height: options.height,
     sillHeight: options.sillHeight,
@@ -311,10 +335,7 @@ export function moveOpening(room: Room, openingId: string, offset: number): void
   if (!opening) return;
   const wall = findWall(room, opening.wallId);
   if (!wall) return;
-  const seg = wallSegment(room, wall);
-  if (!seg) return;
-
-  opening.offset = Math.round(clampOpening(distance(seg.a, seg.b), offset, opening.width));
+  opening.offset = fitOnWall(room, wall, offset, opening.width).offset;
 }
 
 export function resizeOpening(room: Room, openingId: string, width: number): void {
@@ -322,12 +343,7 @@ export function resizeOpening(room: Room, openingId: string, width: number): voi
   if (!opening || width <= 0) return;
   const wall = findWall(room, opening.wallId);
   if (!wall) return;
-  const seg = wallSegment(room, wall);
-  if (!seg) return;
-
-  const wallLen = distance(seg.a, seg.b);
-  opening.width = Math.round(Math.min(width, wallLen));
-  opening.offset = Math.round(clampOpening(wallLen, opening.offset, opening.width));
+  Object.assign(opening, fitOnWall(room, wall, opening.offset, width));
 }
 
 export function deleteOpening(room: Room, openingId: string): void {

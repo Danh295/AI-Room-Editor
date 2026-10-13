@@ -120,6 +120,18 @@ describe('projects', () => {
     expect(await fs.readdir(PROJECTS_DIR)).toEqual([]);
   });
 
+  it('refuses a wall pointing at an inherited key such as "constructor"', async () => {
+    const project = sampleProject();
+    project.room.walls.push({ id: 'w_1', a: 'constructor', b: 'toString', thickness: 114 });
+    await request(app).put(`/api/projects/${project.id}`).send(project).expect(400);
+  });
+
+  it('accepts a project larger than the 1 MB default body limit', async () => {
+    const project = sampleProject();
+    project.name = 'x'.repeat(1_500_000);
+    await request(app).put(`/api/projects/${project.id}`).send(project).expect(200);
+  });
+
   it('refuses a project saved by a newer version of the app', async () => {
     const project = { ...sampleProject(), schemaVersion: 99 };
     await request(app).put(`/api/projects/${project.id}`).send(project).expect(409);

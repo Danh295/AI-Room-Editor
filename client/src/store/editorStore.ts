@@ -74,8 +74,11 @@ export interface EditorState {
   // --- lifecycle
   loadProject: (id: string) => Promise<void>;
   newProject: (name?: string) => Promise<void>;
-  /** Drop the open project without touching disk — used after a delete. */
-  closeProject: () => void;
+  /**
+   * Drop the open project without touching disk (used before a delete);
+   * resolves once any save already out has landed.
+   */
+  closeProject: () => Promise<void>;
   loadLibrary: () => Promise<void>;
 
   // --- editing
@@ -204,17 +207,26 @@ export const useEditor = create<EditorState>((set, get) => {
    * whether that worked so a failure can keep the old project open.
    */
   async function settlePending(): Promise<'clear' | 'blocked' | 'refused'> {
-    saveTimer = clearTimer(saveTimer);
-    retryTimer = clearTimer(retryTimer);
-    retryDelayMs = 0;
+    // An edit can land while this waits (the user keeps working while the
+    // save is out), which leaves the project dirty again. So keep going until
+    // it's on disk or a save fails; a few rounds covers any real typing speed.
+    for (let round = 0; round < 5; round += 1) {
+      saveTimer = clearTimer(saveTimer);
+      retryTimer = clearTimer(retryTimer);
+      retryDelayMs = 0;
 
-    if (inFlight) await inFlight;
-    const { project, saveState } = get();
-    if (project && (saveState === 'dirty' || saveState === 'error')) await get().save();
+      if (inFlight) await inFlight;
+      const { project, saveState } = get();
+      const pending = saveState === 'dirty' || (saveState === 'error' && !saveRefused);
+      if (!project || !pending) break;
+      await get().save();
+      // A failure here is reported to the caller, not retried behind its back.
+      retryTimer = clearTimer(retryTimer);
+      if (get().saveState === 'error') break;
+    }
 
-    // A failure here is reported to the caller, not retried behind its back.
-    retryTimer = clearTimer(retryTimer);
-    if (get().saveState !== 'error') return 'clear';
+    const state = get().saveState;
+    if (state !== 'error' && state !== 'dirty') return 'clear';
     return saveRefused ? 'refused' : 'blocked';
   }
 
@@ -288,6 +300,15 @@ export const useEditor = create<EditorState>((set, get) => {
       set({ loading: true, loadError: notice });
       try {
         const project = await api.getProject(id);
+        // Edits made to the old project while the new one was loading still
+        // need to land before it's replaced.
+        if (get().saveState === 'dirty') {
+          const again = await beforeSwitch();
+          if (!again.go) {
+            set({ loading: false });
+            return;
+          }
+        }
         set({
           project,
           past: [],
@@ -318,7 +339,7 @@ export const useEditor = create<EditorState>((set, get) => {
       await get().save();
     },
 
-    closeProject() {
+    async closeProject() {
       // Cancel a queued autosave first: writing the project back out is exactly
       // what must not happen when it has just been deleted.
       saveTimer = clearTimer(saveTimer);
@@ -333,6 +354,9 @@ export const useEditor = create<EditorState>((set, get) => {
         saveState: 'idle',
         saveError: null,
       });
+      // A save already on the wire can't be recalled, so wait for it: a
+      // delete sent before it lands would be undone by it.
+      if (inFlight) await inFlight;
     },
 
     async loadLibrary() {

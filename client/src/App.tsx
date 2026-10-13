@@ -111,16 +111,16 @@ export default function App() {
 
   async function handleDelete(id: string) {
     setConfirmDelete(null);
+    // Deleting the open project: close it first, and let any save already
+    // out land, or that save would recreate the file after the delete.
+    if (id === project?.id) {
+      forgetProject();
+      await closeProject();
+    }
     try {
       await api.deleteProject(id);
     } catch (err) {
       console.error('[projects] delete failed', err);
-    }
-    // Deleting the open project leaves the editor pointing at a file that no
-    // longer exists, so close it and forget it as the last-opened one.
-    if (id === project?.id) {
-      forgetProject();
-      closeProject();
     }
     await refreshProjects();
   }
