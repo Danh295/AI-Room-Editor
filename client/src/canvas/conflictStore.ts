@@ -30,7 +30,14 @@ export const useConflictStore = create<ConflictState>((set, get) => ({
       previous.length === conflicts.length &&
       previous.every((c, i) => {
         const next = conflicts[i];
-        return next && c.kind === next.kind && c.message === next.message;
+        // Ids, not just the message: two copies of one piece share a name,
+        // so the same message can be about a different placement.
+        return (
+          next &&
+          c.kind === next.kind &&
+          c.message === next.message &&
+          c.itemIds.join() === next.itemIds.join()
+        );
       })
     ) {
       return;

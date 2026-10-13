@@ -82,7 +82,7 @@ function parseNumeric(raw: string): number | null {
  * Parse a free-form length into millimeters, or `null` if it can't be read.
  *
  * Accepts, among others:
- *   12'4"   12' 4 1/2"   12ft 4in   148"   148in   12.5ft
+ *   12'4"   12' 4 1/2"   12'-6"   12ft 4in   148"   148in   12.5ft
  *   3759    3759mm       375.9cm    3.76m
  *
  * A number with no unit follows `system`: inches under imperial (people type
@@ -105,7 +105,11 @@ export function parseLength(input: string, system: UnitSystem): number | null {
     .replace(/[′‘’´`]/g, "'")
     .replace(/[″“”]/g, '"')
     .replace(/\s+/g, ' ')
-    .trim();
+    .trim()
+    // Architectural notation joins feet and inches with a hyphen (12'-6"), as
+    // printed on most plans. Only a hyphen right after a feet unit is read as
+    // a separator, so a bare "12-6" is still rejected rather than guessed at.
+    .replace(/('|ft|feet|foot) ?- ?(?=\d)/g, '$1 ');
 
   if (normalized === '') return null;
   if (normalized.startsWith('-')) return null; // negative lengths are meaningless
