@@ -19,12 +19,16 @@
     "start": "NODE_ENV=production npm run start --workspace server",
     "lint": "oxlint",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "e2e": "npm run build && playwright test",
+    "coverage": "npm run coverage --workspaces --if-present"
   },
   "engines": {
     "node": ">=20.19"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@vitest/coverage-v8": "^4.1.11",
     "concurrently": "^10.0.5",
     "oxlint": "^1.85.0",
     "prettier": "^3.9.8",
