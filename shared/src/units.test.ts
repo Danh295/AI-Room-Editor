@@ -41,6 +41,18 @@ describe('parseLength — imperial input', () => {
   });
 });
 
+describe('parseLength — architectural notation', () => {
+  it.each([
+    [`12'-6"`, 3810],
+    [`12' - 6"`, 3810],
+    [`12ft-6in`, 3810],
+    [`12'-6 1/2"`, 3823],
+    [`12′-6″`, 3810],
+  ])('reads %j', (input, mm) => {
+    expect(parseLength(input, 'imperial')).toBe(mm);
+  });
+});
+
 describe('parseLength — metric input', () => {
   it('reads a bare number as millimeters', () => {
     expect(parseLength('3759', 'metric')).toBe(3759);
@@ -88,6 +100,7 @@ describe('parseLength — rejection', () => {
     ['1/0', 'divide by zero'],
     ['12 ft 4 in extra', 'trailing garbage'],
     ['$40', 'a price'],
+    ['12-6', 'a hyphen with no feet mark to anchor it'],
   ])('rejects %j (%s)', (input) => {
     expect(parseLength(input, 'imperial')).toBeNull();
   });

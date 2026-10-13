@@ -9,14 +9,12 @@ import {
   exteriorPolygon,
   addOpeningNearPoint,
   findConflicts,
-  snapToWall,
-  snapToItems,
   MM_PER_INCH,
 } from '@room/shared';
 import { useEditor } from '../store/editorStore.js';
 import { isTextEntry, ownsSpace } from '../keyboard.js';
 import { useViewport, toWorld, mmPerPixel } from './viewport.js';
-import { snapPoint, nearestWall, type SnapResult } from './snapping.js';
+import { snapPoint, snapItemDrag, nearestWall, type SnapResult } from './snapping.js';
 import ItemLayer from './ItemLayer.js';
 import ConflictLayer from './ConflictLayer.js';
 import { useConflictStore } from './conflictStore.js';
@@ -500,30 +498,11 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
       const item = placed ? libraryById.get(placed.libraryId) : undefined;
       if (!placed || !item) return;
 
-      let next = { x: Math.round(x), y: Math.round(y), rotation: placed.rotation };
-
-      if (settings.snapToWalls) {
-        const wallSnap = snapToWall({ ...placed, ...next }, item, room, toleranceMm * 2);
-        if (wallSnap) {
-          next = { x: wallSnap.x, y: wallSnap.y, rotation: wallSnap.rotation };
-        } else {
-          const others = project.items
-            .filter((o) => o.id !== id)
-            .map((o) => ({ placed: o, item: libraryById.get(o.libraryId) }))
-            .filter((o): o is { placed: typeof placed; item: typeof item } => Boolean(o.item));
-          const itemSnap = snapToItems({ ...placed, ...next }, item, others, toleranceMm * 1.5);
-          if (itemSnap) next = { ...next, ...itemSnap };
-        }
-      }
-
-      if (settings.snapToGrid && settings.gridStep > 0) {
-        const step = settings.gridStep;
-        // Only re-grid when nothing stronger already claimed the position.
-        if (next.rotation === placed.rotation) {
-          next.x = Math.round(next.x / step) * step;
-          next.y = Math.round(next.y / step) * step;
-        }
-      }
+      const others = project.items
+        .filter((o) => o.id !== id)
+        .map((o) => ({ placed: o, item: libraryById.get(o.libraryId) }))
+        .filter((o): o is { placed: typeof placed; item: typeof item } => Boolean(o.item));
+      const next = snapItemDrag(placed, item, x, y, { room, settings, others, toleranceMm });
 
       updatePlacement(id, next);
     },

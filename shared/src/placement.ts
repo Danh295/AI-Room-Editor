@@ -135,6 +135,18 @@ function segmentsIntersect(p1: Pt, p2: Pt, p3: Pt, p4: Pt): boolean {
   return d1 > 0 !== d2 > 0 && d3 > 0 !== d4 > 0;
 }
 
+/** Does any edge of `a` properly cross any edge of `b`? */
+function edgesCross(a: Pt[], b: Pt[]): boolean {
+  for (let i = 0; i < a.length; i += 1) {
+    const a1 = a[i]!;
+    const a2 = a[(i + 1) % a.length]!;
+    for (let j = 0; j < b.length; j += 1) {
+      if (segmentsIntersect(a1, a2, b[j]!, b[(j + 1) % b.length]!)) return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Do two polygons overlap?
  *
@@ -148,16 +160,7 @@ function segmentsIntersect(p1: Pt, p2: Pt, p3: Pt, p4: Pt): boolean {
  */
 export function polygonsOverlap(a: Pt[], b: Pt[]): boolean {
   if (a.length < 3 || b.length < 3) return false;
-
-  for (let i = 0; i < a.length; i += 1) {
-    const a1 = a[i]!;
-    const a2 = a[(i + 1) % a.length]!;
-    for (let j = 0; j < b.length; j += 1) {
-      const b1 = b[j]!;
-      const b2 = b[(j + 1) % b.length]!;
-      if (segmentsIntersect(a1, a2, b1, b2)) return true;
-    }
-  }
+  if (edgesCross(a, b)) return true;
 
   // No crossings: either disjoint, or one is entirely inside the other.
   return pointInPolygon(a[0]!, b) || pointInPolygon(b[0]!, a);
@@ -388,7 +391,10 @@ export function findConflicts(
   if (roomRing.length >= 3) {
     for (const entry of solid) {
       const outsideCorners = entry.polygon.filter((p) => !pointInPolygon(p, roomRing)).length;
-      if (outsideCorners > 0) {
+      // Corners alone miss a piece whose corners are all inside but whose
+      // side cuts across the inside corner of an L-shaped room, so edges that
+      // cross the room's outline count too.
+      if (outsideCorners > 0 || edgesCross(entry.polygon, roomRing)) {
         conflicts.push({
           kind: 'outside',
           itemIds: [entry.placed.id],

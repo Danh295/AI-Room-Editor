@@ -14,9 +14,9 @@ import {
   snapToItems,
   boundsOfPoints,
 } from './placement.js';
-import { createLibraryItem, placeItem, rectangularRoom } from './factory.js';
+import { createLibraryItem, lShapedRoom, placeItem, rectangularRoom } from './factory.js';
 import { addOpening } from './roomOps.js';
-import { polygonArea, pointInPolygon, wallInwardNormal } from './geometry.js';
+import { polygonArea, pointInPolygon, roomPolygon, wallInwardNormal } from './geometry.js';
 import { MM_PER_INCH } from './units.js';
 import type { LibraryItem, PlacedItem } from './types.js';
 
@@ -534,6 +534,28 @@ describe('inside faces and the outside check', () => {
     // Centreline at y=0, inner face at y=57; this sofa's back edge is at y=20.
     const placed = place(item, 2000, 20 + 450, 180);
     const conflicts = findConflicts([placed], lib(item), room);
+    expect(conflicts.map((c) => c.kind)).toEqual(['outside']);
+  });
+});
+
+describe('outside check on concave rooms', () => {
+  it('flags a piece whose side cuts across the inside corner of an L', () => {
+    const room = lShapedRoom(5000, 4000, 2000, 1500);
+    const plank = createLibraryItem({
+      name: 'Bench',
+      subcategoryId: 'bench',
+      w: 3000,
+      d: 200,
+      h: 450,
+    });
+    // All four corners are inside the L; one long side passes through the notch.
+    const placed = place(plank, 3000, 2600, -30);
+    expect(
+      placed &&
+        footprintPolygon(placed, plank).every((p) => pointInPolygon(p, roomPolygon(room))),
+    ).toBe(true);
+
+    const conflicts = findConflicts([placed], lib(plank), room);
     expect(conflicts.map((c) => c.kind)).toEqual(['outside']);
   });
 });

@@ -1,5 +1,11 @@
-import type { Pt, Room } from '@room/shared';
-import { closestPointOnSegment, distance, wallSegment } from '@room/shared';
+import type { LibraryItem, PlacedItem, ProjectSettings, Pt, Room } from '@room/shared';
+import {
+  closestPointOnSegment,
+  distance,
+  snapToItems,
+  snapToWall,
+  wallSegment,
+} from '@room/shared';
 
 export type SnapKind = 'free' | 'grid' | 'vertex' | 'ortho' | 'wall';
 
@@ -117,4 +123,56 @@ export function vertexAt(room: Room, at: Pt, toleranceMm: number): string | null
     if (d <= toleranceMm && (!best || d < best.d)) best = { id, d };
   }
   return best?.id ?? null;
+}
+
+export interface ItemDragOptions {
+  room: Room;
+  settings: Pick<ProjectSettings, 'snapToWalls' | 'snapToGrid' | 'gridStep'>;
+  /** Every other placed piece, paired with its library entry. */
+  others: { placed: PlacedItem; item: LibraryItem }[];
+  /** Snap radius in world millimeters at the current zoom. */
+  toleranceMm: number;
+}
+
+/**
+ * Where a piece being dragged to (x, y) should actually go.
+ *
+ * Walls win, then other pieces, then the grid. The grid only rounds an axis
+ * that nothing stronger placed: rounding a wall-snapped position would pull
+ * the piece off the face it was just put flush against, and an item snap
+ * usually lines up one axis only, leaving the other free to follow the grid.
+ */
+export function snapItemDrag(
+  placed: PlacedItem,
+  item: LibraryItem,
+  x: number,
+  y: number,
+  { room, settings, others, toleranceMm }: ItemDragOptions,
+): { x: number; y: number; rotation: number } {
+  let next = { x: Math.round(x), y: Math.round(y), rotation: placed.rotation };
+  let snappedX = false;
+  let snappedY = false;
+
+  if (settings.snapToWalls) {
+    const wallSnap = snapToWall({ ...placed, ...next }, item, room, toleranceMm * 2);
+    if (wallSnap) {
+      next = { x: wallSnap.x, y: wallSnap.y, rotation: wallSnap.rotation };
+      snappedX = snappedY = true;
+    } else {
+      const itemSnap = snapToItems({ ...placed, ...next }, item, others, toleranceMm * 1.5);
+      if (itemSnap) {
+        snappedX = itemSnap.x !== next.x;
+        snappedY = itemSnap.y !== next.y;
+        next = { ...next, ...itemSnap };
+      }
+    }
+  }
+
+  if (settings.snapToGrid && settings.gridStep > 0) {
+    const step = settings.gridStep;
+    if (!snappedX) next.x = Math.round(next.x / step) * step;
+    if (!snappedY) next.y = Math.round(next.y / step) * step;
+  }
+
+  return next;
 }
