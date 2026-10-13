@@ -9,7 +9,7 @@ import {
   placeItem,
   newId,
 } from '@room/shared';
-import { api } from '../api.js';
+import { api, isRefusal } from '../api.js';
 
 /** Which pointer gesture the canvas is currently interpreting. */
 export type Tool = 'select' | 'pan' | 'wall' | 'door' | 'window';
@@ -165,6 +165,14 @@ function clearTimer(timer: ReturnType<typeof setTimeout> | null): null {
 /** The save request currently out, so a project switch can wait for it. */
 let inFlight: Promise<void> | null = null;
 
+/**
+ * The server refused the last save outright (a 4xx, such as a project that
+ * fails validation). Retrying sends the same body and gets the same answer, so
+ * this stops the retry loop and lets a switch go ahead instead of trapping the
+ * user in a room that can never be saved.
+ */
+let saveRefused = false;
+
 export const useEditor = create<EditorState>((set, get) => {
   function scheduleSave() {
     set({ saveState: 'dirty' });
@@ -195,7 +203,7 @@ export const useEditor = create<EditorState>((set, get) => {
    * never land. So the switch disarms them and saves now instead, and reports
    * whether that worked so a failure can keep the old project open.
    */
-  async function settlePending(): Promise<boolean> {
+  async function settlePending(): Promise<'clear' | 'blocked' | 'refused'> {
     saveTimer = clearTimer(saveTimer);
     retryTimer = clearTimer(retryTimer);
     retryDelayMs = 0;
@@ -206,7 +214,8 @@ export const useEditor = create<EditorState>((set, get) => {
 
     // A failure here is reported to the caller, not retried behind its back.
     retryTimer = clearTimer(retryTimer);
-    return get().saveState !== 'error';
+    if (get().saveState !== 'error') return 'clear';
+    return saveRefused ? 'refused' : 'blocked';
   }
 
   /** Why a switch was refused, worded for the banner. */
@@ -215,6 +224,31 @@ export const useEditor = create<EditorState>((set, get) => {
     return `Couldn't save “${project?.name ?? 'this room'}”, so it's still open${
       saveError ? `: ${saveError}` : '.'
     }`;
+  }
+
+  /** What was lost when a switch went ahead past a save the server refused. */
+  function switchedPastRefusal(): string {
+    const { project, saveError } = get();
+    return `The server refused the last changes to “${project?.name ?? 'the previous room'}”, so they weren't kept${
+      saveError ? `: ${saveError}` : '.'
+    }`;
+  }
+
+  /**
+   * Settle the outgoing project, then say whether to switch and what to tell
+   * the user. A network failure keeps the old project open (retrying later can
+   * still save it); a refusal can't succeed however often it's retried, so the
+   * switch goes ahead and the loss is reported rather than trapping the user.
+   */
+  async function beforeSwitch(): Promise<{ go: boolean; notice: string | null }> {
+    const outcome = await settlePending();
+    if (outcome === 'blocked') {
+      set({ loadError: switchBlocked() });
+      return { go: false, notice: null };
+    }
+    const notice = outcome === 'refused' ? switchedPastRefusal() : null;
+    saveRefused = false;
+    return { go: true, notice };
   }
 
   /** Replace the project and mark it dirty, with optional history push. */
@@ -249,11 +283,9 @@ export const useEditor = create<EditorState>((set, get) => {
     loadError: null,
 
     async loadProject(id) {
-      if (!(await settlePending())) {
-        set({ loadError: switchBlocked() });
-        return;
-      }
-      set({ loading: true, loadError: null });
+      const { go, notice } = await beforeSwitch();
+      if (!go) return;
+      set({ loading: true, loadError: notice });
       try {
         const project = await api.getProject(id);
         set({
@@ -271,10 +303,8 @@ export const useEditor = create<EditorState>((set, get) => {
     },
 
     async newProject(name) {
-      if (!(await settlePending())) {
-        set({ loadError: switchBlocked() });
-        return;
-      }
+      const { go, notice } = await beforeSwitch();
+      if (!go) return;
       const project = createProject(name);
       set({
         project,
@@ -282,7 +312,7 @@ export const useEditor = create<EditorState>((set, get) => {
         future: [],
         gestureBase: null,
         selection: [],
-        loadError: null,
+        loadError: notice,
       });
       // Persist immediately so a refresh right after creation finds it.
       await get().save();
@@ -648,6 +678,7 @@ export const useEditor = create<EditorState>((set, get) => {
     try {
       const saved = await api.saveProject(project);
       retryDelayMs = 0;
+      saveRefused = false;
 
       // Only adopt the server's echo if nothing changed while in flight;
       // otherwise we'd clobber edits the user made during the round trip.
@@ -662,7 +693,8 @@ export const useEditor = create<EditorState>((set, get) => {
       }
     } catch (err) {
       set({ saveState: 'error', saveError: (err as Error).message });
-      scheduleRetry();
+      saveRefused = isRefusal(err);
+      if (!saveRefused) scheduleRetry();
     }
   }
 });

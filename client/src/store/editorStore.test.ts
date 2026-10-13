@@ -14,9 +14,12 @@ const saveLibraryItem = vi.hoisted(() => vi.fn());
 const deleteLibraryItem = vi.hoisted(() => vi.fn());
 const getProject = vi.hoisted(() => vi.fn());
 
-vi.mock('../api.js', () => ({
+vi.mock('../api.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../api.js')>()),
   api: { saveProject, getProject, getLibrary, saveLibraryItem, deleteLibraryItem },
 }));
+
+const { ApiError } = await import('../api.js');
 
 const { useEditor } = await import('./editorStore.js');
 
@@ -475,6 +478,24 @@ describe('switching projects', () => {
     expect(getProject).not.toHaveBeenCalled();
     expect(useEditor.getState().project?.name).toBe('unsaved');
     expect(useEditor.getState().loadError).toMatch(/still open.*disk full/);
+  });
+
+  it('does not retry a save the server refused, and lets the switch go ahead', async () => {
+    saveProject.mockRejectedValue(new ApiError('invalid project: bad wall', 400));
+    getProject.mockResolvedValue(other());
+    useEditor.getState().edit((d) => {
+      d.name = 'rejected';
+    });
+    await vi.advanceTimersByTimeAsync(700);
+    expect(useEditor.getState().saveState).toBe('error');
+
+    // No retry loop: the same body would get the same answer.
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(saveProject).toHaveBeenCalledTimes(1);
+
+    await useEditor.getState().loadProject('proj_other');
+    expect(useEditor.getState().project?.id).toBe('proj_other');
+    expect(useEditor.getState().loadError).toMatch(/refused.*rejected.*bad wall/);
   });
 
   it('saves the outgoing project before starting a new one', async () => {
