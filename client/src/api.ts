@@ -9,6 +9,25 @@ import type {
 /** Everything goes through the Vite proxy, so paths are same-origin. */
 const BASE = '/api';
 
+/** A request the server answered with an error status, carrying that status. */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+/**
+ * The server refused the request itself (a 4xx): sending the same thing again
+ * will get the same answer, unlike a network failure or a 5xx.
+ */
+export function isRefusal(err: unknown): boolean {
+  return err instanceof ApiError && err.status >= 400 && err.status < 500;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE}${path}`, {
     ...init,
@@ -25,7 +44,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       /* non-JSON error body */
     }
-    throw new Error(`${path}: ${detail}`);
+    throw new ApiError(`${path}: ${detail}`, response.status);
   }
 
   return (await response.json()) as T;
