@@ -162,6 +162,9 @@ function clearTimer(timer: ReturnType<typeof setTimeout> | null): null {
   return null;
 }
 
+/** The save request currently out, so a project switch can wait for it. */
+let inFlight: Promise<void> | null = null;
+
 export const useEditor = create<EditorState>((set, get) => {
   function scheduleSave() {
     set({ saveState: 'dirty' });
@@ -181,6 +184,37 @@ export const useEditor = create<EditorState>((set, get) => {
       retryTimer = null;
       void get().save();
     }, retryDelayMs);
+  }
+
+  /**
+   * Get the open project onto disk before something replaces it.
+   *
+   * The debounce and the retry both call `save()`, which writes whatever
+   * project is open *when the timer fires*. Left armed across a switch, they'd
+   * write the newly opened project and the outgoing one's last edit would
+   * never land. So the switch disarms them and saves now instead, and reports
+   * whether that worked so a failure can keep the old project open.
+   */
+  async function settlePending(): Promise<boolean> {
+    saveTimer = clearTimer(saveTimer);
+    retryTimer = clearTimer(retryTimer);
+    retryDelayMs = 0;
+
+    if (inFlight) await inFlight;
+    const { project, saveState } = get();
+    if (project && (saveState === 'dirty' || saveState === 'error')) await get().save();
+
+    // A failure here is reported to the caller, not retried behind its back.
+    retryTimer = clearTimer(retryTimer);
+    return get().saveState !== 'error';
+  }
+
+  /** Why a switch was refused, worded for the banner. */
+  function switchBlocked(): string {
+    const { project, saveError } = get();
+    return `Couldn't save “${project?.name ?? 'this room'}”, so it's still open${
+      saveError ? `: ${saveError}` : '.'
+    }`;
   }
 
   /** Replace the project and mark it dirty, with optional history push. */
@@ -215,6 +249,10 @@ export const useEditor = create<EditorState>((set, get) => {
     loadError: null,
 
     async loadProject(id) {
+      if (!(await settlePending())) {
+        set({ loadError: switchBlocked() });
+        return;
+      }
       set({ loading: true, loadError: null });
       try {
         const project = await api.getProject(id);
@@ -233,6 +271,10 @@ export const useEditor = create<EditorState>((set, get) => {
     },
 
     async newProject(name) {
+      if (!(await settlePending())) {
+        set({ loadError: switchBlocked() });
+        return;
+      }
       const project = createProject(name);
       set({
         project,
@@ -585,35 +627,44 @@ export const useEditor = create<EditorState>((set, get) => {
       get().clearSelection();
     },
 
-    async save() {
-      const { project } = get();
-      if (!project) return;
-
-      // Whatever armed this call, it has now happened.
-      saveTimer = clearTimer(saveTimer);
-      set({ saveState: 'saving', saveError: null });
-
-      try {
-        const saved = await api.saveProject(project);
-        retryDelayMs = 0;
-
-        // Only adopt the server's echo if nothing changed while in flight;
-        // otherwise we'd clobber edits the user made during the round trip.
-        // Reporting "Saved" in that case would be a lie too — the edit that
-        // landed mid-flight is still only in memory, and the pending autosave
-        // is what will write it.
-        if (get().project?.id === saved.id && get().saveState === 'saving') {
-          set({
-            project: { ...get().project!, updatedAt: saved.updatedAt },
-            saveState: 'saved',
-          });
-        }
-      } catch (err) {
-        set({ saveState: 'error', saveError: (err as Error).message });
-        scheduleRetry();
-      }
+    save() {
+      const attempt = writeProject();
+      inFlight = attempt;
+      void attempt.finally(() => {
+        if (inFlight === attempt) inFlight = null;
+      });
+      return attempt;
     },
   };
+
+  async function writeProject(): Promise<void> {
+    const { project } = get();
+    if (!project) return;
+
+    // Whatever armed this call, it has now happened.
+    saveTimer = clearTimer(saveTimer);
+    set({ saveState: 'saving', saveError: null });
+
+    try {
+      const saved = await api.saveProject(project);
+      retryDelayMs = 0;
+
+      // Only adopt the server's echo if nothing changed while in flight;
+      // otherwise we'd clobber edits the user made during the round trip.
+      // Reporting "Saved" in that case would be a lie too — the edit that
+      // landed mid-flight is still only in memory, and the pending autosave
+      // is what will write it.
+      if (get().project?.id === saved.id && get().saveState === 'saving') {
+        set({
+          project: { ...get().project!, updatedAt: saved.updatedAt },
+          saveState: 'saved',
+        });
+      }
+    } catch (err) {
+      set({ saveState: 'error', saveError: (err as Error).message });
+      scheduleRetry();
+    }
+  }
 });
 
 /*

@@ -91,12 +91,17 @@ Both bind to loopback on purpose. **This app has no authentication of any
 kind** — anyone who can reach the port can read and overwrite every project.
 Set `HOST=0.0.0.0` only behind something that asks who you are.
 
-| Variable         | Default       | What it does                             |
-| ---------------- | ------------- | ---------------------------------------- |
-| `GEMINI_API_KEY` | —             | Enables AI lookup and floor plan tracing |
-| `PORT`           | `8787`        | Port to listen on                        |
-| `HOST`           | `127.0.0.1`   | Interface to bind                        |
-| `ROOM_DATA_DIR`  | `<repo>/data` | Where projects, library, and images live |
+| Variable         | Default       | What it does                               |
+| ---------------- | ------------- | ------------------------------------------ |
+| `GEMINI_API_KEY` | —             | Enables AI lookup and floor plan tracing   |
+| `PORT`           | `8787`        | Port to listen on                          |
+| `HOST`           | `127.0.0.1`   | Interface to bind                          |
+| `ROOM_DATA_DIR`  | `<repo>/data` | Where projects, library, and images live   |
+| `ALLOWED_HOSTS`  | —             | Extra hostnames to answer, comma-separated |
+
+The server answers only requests addressed to `localhost`, `127.0.0.1` or
+`[::1]`, which stops other websites reaching it through DNS rebinding. If you
+serve it under another name, add that name to `ALLOWED_HOSTS`.
 
 ## Roadmap
 

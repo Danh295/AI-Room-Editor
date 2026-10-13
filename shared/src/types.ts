@@ -233,6 +233,8 @@ export interface ProjectSettings {
 export interface Project {
   id: string;
   name: string;
+  /** Shape version of the saved file; absent on files from before versioning. */
+  schemaVersion?: number;
   settings: ProjectSettings;
   room: Room;
   items: PlacedItem[];

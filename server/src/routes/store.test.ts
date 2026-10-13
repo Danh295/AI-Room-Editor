@@ -112,6 +112,41 @@ describe('projects', () => {
     await request(app).put('/api/projects/proj_abc').send('42').type('json').expect(400);
   });
 
+  it('refuses a project whose walls point at missing corners', async () => {
+    const project = sampleProject();
+    project.room.walls.push({ id: 'w_1', a: 'v_nowhere', b: 'v_also_nowhere', thickness: 114 });
+    const res = await request(app).put(`/api/projects/${project.id}`).send(project).expect(400);
+    expect(res.body.error).toMatch(/room\.walls\[0\]\.a refers to missing vertex/);
+    expect(await fs.readdir(PROJECTS_DIR)).toEqual([]);
+  });
+
+  it('refuses a project saved by a newer version of the app', async () => {
+    const project = { ...sampleProject(), schemaVersion: 99 };
+    await request(app).put(`/api/projects/${project.id}`).send(project).expect(409);
+  });
+
+  it('stamps the schema version on save, and adds it to older files on read', async () => {
+    const project = sampleProject();
+    const put = await request(app).put(`/api/projects/${project.id}`).send(project).expect(200);
+    expect(put.body.schemaVersion).toBe(1);
+
+    // A file from before versioning, written straight to disk.
+    const legacy: Partial<Project> = { ...sampleProject('Legacy') };
+    delete legacy.schemaVersion;
+    await fs.writeFile(path.join(PROJECTS_DIR, `${legacy.id}.json`), JSON.stringify(legacy));
+    const got = await request(app).get(`/api/projects/${legacy.id}`).expect(200);
+    expect(got.body.schemaVersion).toBe(1);
+  });
+
+  it('lists the readable projects even when one file is corrupt', async () => {
+    const good = sampleProject('Good');
+    await request(app).put(`/api/projects/${good.id}`).send(good).expect(200);
+    await fs.writeFile(path.join(PROJECTS_DIR, 'proj_broken.json'), '{"id": "proj_broken",');
+
+    const list = await request(app).get('/api/projects').expect(200);
+    expect(list.body.map((p: { name: string }) => p.name)).toEqual(['Good']);
+  });
+
   it('answers 400, not 500, for malformed JSON', async () => {
     await request(app)
       .put('/api/projects/proj_abc')
@@ -160,6 +195,13 @@ describe('library', () => {
     await request(app).put('/api/library').send([item(), item()]).expect(200, { count: 2 });
     await request(app).put('/api/library').send({ items: [] }).expect(400);
   });
+
+  it('refuses library items with unusable sizes', async () => {
+    const bad = { ...item(), w: 'wide' };
+    await request(app).put(`/api/library/${bad.id}`).send(bad).expect(400);
+    const res = await request(app).put('/api/library').send([item(), bad]).expect(400);
+    expect(res.body.error).toMatch(/items\[1\]\.w/);
+  });
 });
 
 describe('health', () => {
@@ -167,6 +209,21 @@ describe('health', () => {
     const res = await request(app).get('/api/health').expect(200);
     expect(res.body.ok).toBe(true);
     expect(res.body.dataDir).toBe(dataDir);
+  });
+});
+
+describe('host check', () => {
+  it('refuses a request addressed to another hostname (DNS rebinding)', async () => {
+    const res = await request(app).get('/api/projects').set('host', 'evil.example:8787');
+    expect(res.status).toBe(403);
+  });
+
+  it('accepts the loopback names', async () => {
+    await Promise.all(
+      ['localhost:8787', '127.0.0.1:8787', '[::1]:8787'].map((host) =>
+        request(app).get('/api/health').set('host', host).expect(200),
+      ),
+    );
   });
 });
 
