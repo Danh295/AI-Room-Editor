@@ -35,13 +35,38 @@ export function wallsAtVertex(room: Room, vertexId: string): Wall[] {
   return room.walls.filter((w) => w.a === vertexId || w.b === vertexId);
 }
 
-/** Move a vertex to an absolute position. Every attached wall follows. */
+/**
+ * Pull each opening on these walls back onto its wall.
+ *
+ * Every way a wall gets shorter — typing a length, dragging a corner,
+ * splitting it — would otherwise leave a door hanging past the end, drawn and
+ * collision-checked outside the room. The offset is clamped first; the width
+ * only shrinks when the wall itself has become narrower than the opening.
+ */
+export function refitOpenings(room: Room, wallIds: Iterable<string>): void {
+  const ids = new Set(wallIds);
+  for (const opening of room.openings) {
+    if (!ids.has(opening.wallId)) continue;
+    const wall = findWall(room, opening.wallId);
+    const seg = wall && wallSegment(room, wall);
+    if (!seg) continue;
+    const wallLen = distance(seg.a, seg.b);
+    opening.width = Math.round(Math.min(opening.width, wallLen));
+    opening.offset = Math.round(clampOpening(wallLen, opening.offset, opening.width));
+  }
+}
+
+/** Move a vertex to an absolute position. Every attached wall, and its openings, follow. */
 export function moveVertex(room: Room, vertexId: string, to: { x: number; y: number }): void {
   const vertex = room.vertices[vertexId];
   if (!vertex) return;
   const snapped = snapInt(to);
   vertex.x = snapped.x;
   vertex.y = snapped.y;
+  refitOpenings(
+    room,
+    wallsAtVertex(room, vertexId).map((w) => w.id),
+  );
 }
 
 export function translateVertex(
@@ -166,7 +191,7 @@ export function deleteWall(room: Room, wallId: string): void {
 
 /**
  * Split a wall at a point along it, inserting a vertex.
- * Openings are reassigned to whichever half now contains them.
+ * Openings are reassigned to whichever half holds their centre.
  */
 export function splitWall(
   room: Room,
@@ -199,14 +224,16 @@ export function splitWall(
   const index = room.walls.findIndex((w) => w.id === wallId);
   room.walls.splice(index + 1, 0, secondHalf);
 
-  // Move any opening that now sits past the split onto the second half.
+  // Each opening goes to the half holding its centre, then both halves are
+  // refitted so one that straddled the split doesn't hang past either end.
   for (const opening of room.openings) {
     if (opening.wallId !== wallId) continue;
-    if (opening.offset >= splitAt) {
+    if (opening.offset + opening.width / 2 >= splitAt) {
       opening.wallId = secondHalf.id;
       opening.offset -= splitAt;
     }
   }
+  refitOpenings(room, [wall.id, secondHalf.id]);
 
   return midId;
 }
