@@ -18,6 +18,8 @@ import {
   normalize,
   scale,
   sub,
+  interiorWallLength,
+  wallLength,
   wallSegment,
 } from './geometry.js';
 
@@ -129,6 +131,20 @@ export function setWallLength(room: Room, wallId: string, newLength: number): bo
   }
 
   return true;
+}
+
+/**
+ * Set the length of a wall's inside face, the length a tape measure reads.
+ *
+ * Moving the end by the same amount moves the inside face by the same amount,
+ * as long as the neighbouring walls keep their angles, so the target is just
+ * shifted by the wall's current centreline-minus-inside difference.
+ */
+export function setInteriorWallLength(room: Room, wallId: string, newLength: number): boolean {
+  const wall = findWall(room, wallId);
+  if (!wall || newLength <= 0) return false;
+  const difference = wallLength(room, wall) - interiorWallLength(room, wall);
+  return setWallLength(room, wallId, newLength + difference);
 }
 
 /**

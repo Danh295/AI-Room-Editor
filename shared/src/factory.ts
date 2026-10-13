@@ -11,12 +11,14 @@ import type {
   PlacedItem,
   Project,
   ProjectSettings,
+  Pt,
   Room,
   UnitSystem,
   Wall,
 } from './types.js';
 import { defaultGridStep, MM_PER_INCH } from './units.js';
 import { PROJECT_SCHEMA_VERSION } from './validate.js';
+import { centrelineFromInterior } from './geometry.js';
 import {
   defaultClearances,
   defaultFootprint,
@@ -64,9 +66,10 @@ export function emptyRoom(): Room {
 /**
  * A closed loop of walls through the given points, in order.
  *
- * Points are interior corner positions; walls are drawn centered on the lines
- * between them. Fewer than three points yields a room with no walls rather than
- * a degenerate loop.
+ * Points are wall centreline corners; walls are drawn centred on the lines
+ * between them, so the usable floor is half a wall thickness smaller on every
+ * side. To build from inside measurements, use `roomFromInterior`. Fewer than
+ * three points yields a room with no walls rather than a degenerate loop.
  */
 export function roomFromPolygon(
   points: { x: number; y: number }[],
@@ -93,27 +96,61 @@ export function roomFromPolygon(
   return room;
 }
 
-/** Axis-aligned rectangular room with its top-left interior corner at origin. */
+/**
+ * A room whose walls' inside faces meet at `points`: what someone measured
+ * with a tape, or typed into Quick room, or traced off a drawing. The walls
+ * are pushed outward by half their thickness so the floor inside is exactly
+ * that size.
+ */
+export function roomFromInterior(
+  points: { x: number; y: number }[],
+  thickness = DEFAULT_WALL_THICKNESS,
+): Room {
+  return roomFromPolygon(centrelineFromInterior(points, thickness), thickness);
+}
+
+/** Corners of a `width` x `length` rectangle with its top-left at the origin. */
+export function rectangleCorners(width: number, length: number): Pt[] {
+  return [
+    { x: 0, y: 0 },
+    { x: width, y: 0 },
+    { x: width, y: length },
+    { x: 0, y: length },
+  ];
+}
+
+/**
+ * Corners of an L: `notchW` / `notchD` cut a rectangle out of the bottom-right
+ * corner of the `width` x `length` bounding box.
+ */
+export function lShapeCorners(
+  width: number,
+  length: number,
+  notchW: number,
+  notchD: number,
+): Pt[] {
+  const nw = Math.min(notchW, width - 1);
+  const nd = Math.min(notchD, length - 1);
+  return [
+    { x: 0, y: 0 },
+    { x: width, y: 0 },
+    { x: width, y: length - nd },
+    { x: width - nw, y: length - nd },
+    { x: width - nw, y: length },
+    { x: 0, y: length },
+  ];
+}
+
+/** Axis-aligned rectangular room with its top-left centreline corner at origin. */
 export function rectangularRoom(
   width: number,
   length: number,
   thickness = DEFAULT_WALL_THICKNESS,
 ): Room {
-  return roomFromPolygon(
-    [
-      { x: 0, y: 0 },
-      { x: width, y: 0 },
-      { x: width, y: length },
-      { x: 0, y: length },
-    ],
-    thickness,
-  );
+  return roomFromPolygon(rectangleCorners(width, length), thickness);
 }
 
-/**
- * L-shaped room. `notchW` / `notchD` cut a rectangle out of the bottom-right
- * corner of the `width` x `length` bounding box.
- */
+/** L-shaped room on centrelines; see `lShapeCorners` for the notch. */
 export function lShapedRoom(
   width: number,
   length: number,
@@ -121,19 +158,7 @@ export function lShapedRoom(
   notchD: number,
   thickness = DEFAULT_WALL_THICKNESS,
 ): Room {
-  const nw = Math.min(notchW, width - 1);
-  const nd = Math.min(notchD, length - 1);
-  return roomFromPolygon(
-    [
-      { x: 0, y: 0 },
-      { x: width, y: 0 },
-      { x: width, y: length - nd },
-      { x: width - nw, y: length - nd },
-      { x: width - nw, y: length },
-      { x: 0, y: length },
-    ],
-    thickness,
-  );
+  return roomFromPolygon(lShapeCorners(width, length, notchW, notchD), thickness);
 }
 
 export function createProject(name = 'Untitled room', units: UnitSystem = 'imperial'): Project {

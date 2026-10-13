@@ -517,3 +517,23 @@ describe('footprintPolygon', () => {
     void room;
   });
 });
+
+describe('inside faces and the outside check', () => {
+  it('does not flag a piece snapped flush against a wall', () => {
+    const room = rectangularRoom(4000, 3000);
+    const item = sofa();
+    const snap = snapToWall(place(item, 2000, 600), item, room, 1000)!;
+    const placed = { ...place(item, snap.x, snap.y), rotation: snap.rotation };
+    const conflicts = findConflicts([placed], lib(item), room);
+    expect(conflicts).toEqual([]);
+  });
+
+  it('flags a piece pushed into the inner half of a wall', () => {
+    const room = rectangularRoom(4000, 3000);
+    const item = sofa();
+    // Centreline at y=0, inner face at y=57; this sofa's back edge is at y=20.
+    const placed = place(item, 2000, 20 + 450, 180);
+    const conflicts = findConflicts([placed], lib(item), room);
+    expect(conflicts.map((c) => c.kind)).toEqual(['outside']);
+  });
+});

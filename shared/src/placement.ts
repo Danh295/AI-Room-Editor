@@ -24,10 +24,10 @@ import {
   angleOf,
   degToRad,
   distance,
+  interiorPolygon,
   normalize,
   perpendicular,
   pointInPolygon,
-  roomPolygon,
   scale as vscale,
   sub,
   wallInwardNormal,
@@ -364,7 +364,10 @@ export function findConflicts(
     .filter((v): v is { placed: PlacedItem; item: LibraryItem; polygon: Pt[] } => v !== null);
 
   const conflicts: Conflict[] = [];
-  const roomRing = roomPolygon(room);
+  // The inside faces, not the centrelines: half of every wall is inside the
+  // centreline outline, and furniture in it is in the plaster. The 1 mm of
+  // slack keeps a piece snapped flush against a face from counting as outside.
+  const roomRing = interiorPolygon(room, 1);
 
   // 1. Furniture through furniture.
   for (let i = 0; i < solid.length; i += 1) {

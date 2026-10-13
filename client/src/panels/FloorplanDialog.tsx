@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FloorplanTraceResult, Room, UnitSystem } from '@room/shared';
-import { addOpeningNearPoint, formatLength, roomFromPolygon, parseLength } from '@room/shared';
+import { addOpeningNearPoint, formatLength, roomFromInterior, parseLength } from '@room/shared';
 import { api } from '../api.js';
 import { useEditor } from '../store/editorStore.js';
 import { fitRoomToView } from '../canvas/PlanCanvas.js';
@@ -114,7 +114,9 @@ export default function FloorplanDialog({ units, onClose }: FloorplanDialogProps
       const worldPolygon = trace.polygonPx.map((p) => ({ x: p.x * scale, y: p.y * scale }));
 
       edit((d) => {
-        const traced: Room = roomFromPolygon(worldPolygon, thickness);
+        // The trace finds the inside corners of the drawing, so the walls go
+        // outside them and the floor keeps the drawing's size.
+        const traced: Room = roomFromInterior(worldPolygon, thickness);
         d.room.vertices = traced.vertices;
         d.room.walls = traced.walls;
         d.room.openings = [];
