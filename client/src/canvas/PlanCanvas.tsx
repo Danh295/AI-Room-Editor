@@ -5,6 +5,7 @@ import type { Pt } from '@room/shared';
 import {
   distance,
   moveVertex,
+  refitOpenings,
   roomPolygon,
   exteriorPolygon,
   addOpeningNearPoint,
@@ -483,6 +484,17 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
     [room, settings, edit, toleranceMm],
   );
 
+  /** Finish a corner drag: pull openings back onto any wall it shortened. */
+  const handleVertexDragEnd = useCallback(() => {
+    edit((d) => {
+      refitOpenings(
+        d.room,
+        d.room.walls.map((w) => w.id),
+      );
+    });
+    endGesture();
+  }, [edit, endGesture]);
+
   /**
    * Drag an item, snapping it to walls first and neighbours second.
    *
@@ -667,7 +679,7 @@ export default function PlanCanvas({ onEditWallLength }: PlanCanvasProps) {
               selection={selection}
               onDragStart={beginGesture}
               onDragMove={handleVertexDragMove}
-              onDragEnd={endGesture}
+              onDragEnd={handleVertexDragEnd}
             />
           )}
         </Layer>
