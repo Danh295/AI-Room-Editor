@@ -19,6 +19,11 @@ jobs:
 
       - run: npm ci
 
+      # Runtime dependencies only: an advisory in a dev tool is Dependabot's to
+      # raise, but one in what the server ships with should stop the merge.
+      - name: Audit runtime dependencies
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Typecheck
         run: npm run typecheck
 

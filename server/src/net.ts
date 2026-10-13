@@ -109,7 +109,13 @@ function isRedirect(status: number): boolean {
 
 async function fetchOnce(url: URL, init: RequestInit, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
+  // The deadline covers reading the body too, not just the headers: a host
+  // that answers promptly and then trickles bytes would otherwise hold the
+  // request open forever. Aborting a body that's already been read does
+  // nothing, so the timer is simply left to lapse; unref keeps it from holding
+  // the process open.
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  timer.unref?.();
   try {
     return await fetch(url, {
       ...init,
@@ -118,9 +124,50 @@ async function fetchOnce(url: URL, init: RequestInit, timeoutMs: number): Promis
       signal: controller.signal,
       headers: { 'user-agent': UA, ...init.headers },
     });
-  } finally {
+  } catch (err) {
     clearTimeout(timer);
+    throw err;
   }
+}
+
+/**
+ * Read a response body without ever holding more than `maxBytes` of it.
+ *
+ * `arrayBuffer()` and `text()` buffer the whole body before anyone can look at
+ * its size, so a multi-gigabyte response is in memory before a size check
+ * runs. This reads chunk by chunk instead. By default an oversized body is an
+ * error; with `truncate` it stops early and returns what it has, which is
+ * what a caller that only wants the start of a page needs.
+ */
+export async function readCapped(
+  response: Response,
+  maxBytes: number,
+  { truncate = false }: { truncate?: boolean } = {},
+): Promise<Buffer> {
+  const declared = Number(response.headers.get('content-length'));
+  if (!truncate && Number.isFinite(declared) && declared > maxBytes) {
+    await response.body?.cancel().catch(() => undefined);
+    throw new Error('response too large');
+  }
+  if (!response.body) return Buffer.alloc(0);
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    // Sequential by nature: each read depends on the stream's position.
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel().catch(() => undefined);
+      if (!truncate) throw new Error('response too large');
+      chunks.push(value.subarray(0, value.byteLength - (total - maxBytes)));
+      break;
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks);
 }
 
 export interface SafeFetchResult {
@@ -247,7 +294,7 @@ export async function fetchPageMeta(rawUrl: string): Promise<PageMeta> {
   const url = new URL(finalUrl);
 
   // Product pages are large and everything useful is in <head>; stop early.
-  const html = (await response.text()).slice(0, 200_000);
+  const html = (await readCapped(response, 200_000, { truncate: true })).toString('utf8');
 
   const imageRaw = metaContent(html, [
     /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i,
