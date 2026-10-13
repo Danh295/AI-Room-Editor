@@ -161,9 +161,9 @@ export function snapItemDrag(
     } else {
       const itemSnap = snapToItems({ ...placed, ...next }, item, others, toleranceMm * 1.5);
       if (itemSnap) {
-        snappedX = itemSnap.x !== next.x;
-        snappedY = itemSnap.y !== next.y;
-        next = { ...next, ...itemSnap };
+        snappedX = itemSnap.snappedX;
+        snappedY = itemSnap.snappedY;
+        next = { ...next, x: itemSnap.x, y: itemSnap.y };
       }
     }
   }

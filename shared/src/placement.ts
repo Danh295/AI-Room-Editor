@@ -553,7 +553,7 @@ export function snapToItems(
   item: LibraryItem,
   others: { placed: PlacedItem; item: LibraryItem }[],
   toleranceMm: number,
-): { x: number; y: number } | null {
+): { x: number; y: number; snappedX: boolean; snappedY: boolean } | null {
   const self = footprintPolygon(placed, item);
   const selfBounds = boundsOfPoints(self);
   let dx: number | null = null;
@@ -592,7 +592,14 @@ export function snapToItems(
   }
 
   if (dx === null && dy === null) return null;
-  return { x: Math.round(placed.x + (dx ?? 0)), y: Math.round(placed.y + (dy ?? 0)) };
+  // Which axes lined up is reported separately: an axis already exactly flush
+  // (a delta of 0) is still a snap, though the position doesn't change.
+  return {
+    x: Math.round(placed.x + (dx ?? 0)),
+    y: Math.round(placed.y + (dy ?? 0)),
+    snappedX: dx !== null,
+    snappedY: dy !== null,
+  };
 }
 
 function boundsOfPoints(points: Pt[]) {

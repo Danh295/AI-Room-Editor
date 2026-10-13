@@ -86,6 +86,12 @@ export function createApp({ serveClient = false }: AppOptions = {}): express.Exp
   const bulky = express.json({ limit: '32mb' });
   app.use('/api/ingest', bulky);
   app.use('/api/assets', bulky);
+  // A project or library is the user's own document and grows with it; 1mb
+  // is a few thousand placed items, low enough to hit, and a 413 on autosave
+  // can't be fixed by retrying.
+  const documents = express.json({ limit: '16mb' });
+  app.use('/api/projects', documents);
+  app.use('/api/library', documents);
   app.use(express.json({ limit: '1mb' }));
 
   app.get('/api/health', async (_req, res) => {

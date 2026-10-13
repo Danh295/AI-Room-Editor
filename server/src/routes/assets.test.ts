@@ -75,7 +75,7 @@ describe('POST /api/assets/upload', () => {
     await request(app)
       .post('/api/assets/upload')
       .send({ dataBase64: Buffer.from('not an image').toString('base64') })
-      .expect(400);
+      .expect(415);
   });
 });
 
@@ -125,6 +125,19 @@ describe('raster-only decoding', () => {
     await request(app)
       .post('/api/assets/upload')
       .send({ dataBase64: Buffer.from(svg).toString('base64') })
-      .expect(400);
+      .expect(415);
+  });
+
+  it('still takes TIFF, which scanned floor plans often are', async () => {
+    const tiff = await sharp({
+      create: { width: 8, height: 8, channels: 3, background: { r: 0, g: 0, b: 0 } },
+    })
+      .tiff()
+      .toBuffer();
+    expect(rasterFormat(tiff)).toBe('tiff');
+    await request(app)
+      .post('/api/assets/upload')
+      .send({ dataBase64: tiff.toString('base64') })
+      .expect(200);
   });
 });

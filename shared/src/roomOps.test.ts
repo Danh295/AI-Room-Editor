@@ -16,7 +16,7 @@ import {
   setInteriorWallLength,
   refitOpenings,
 } from './roomOps.js';
-import { rectangularRoom, lShapedRoom, emptyRoom } from './factory.js';
+import { rectangularRoom, lShapedRoom, emptyRoom, roomFromPolygon } from './factory.js';
 import {
   roomPolygon,
   roomArea,
@@ -25,6 +25,7 @@ import {
   polygonArea,
   interiorWallLength,
   interiorArea,
+  interiorSpan,
 } from './geometry.js';
 import { MM_PER_FOOT } from './units.js';
 
@@ -245,7 +246,8 @@ describe('openings', () => {
       offset: 9999,
       width: 900,
     })!;
-    expect(door.offset).toBe(3100);
+    // Stops at the inside face of the far wall (114 mm walls, so 57 in).
+    expect(door.offset).toBe(4000 - 57 - 900);
   });
 
   it('clamps when sliding along the wall', () => {
@@ -256,11 +258,12 @@ describe('openings', () => {
       width: 900,
     })!;
 
+    // Each end stops at the neighbouring wall's inside face, not its centreline.
     moveOpening(room, door.id, -500);
-    expect(room.openings[0]!.offset).toBe(0);
+    expect(room.openings[0]!.offset).toBe(57);
 
     moveOpening(room, door.id, 99999);
-    expect(room.openings[0]!.offset).toBe(3100);
+    expect(room.openings[0]!.offset).toBe(4000 - 57 - 900);
   });
 
   it('clamps width to the wall and re-clamps the offset', () => {
@@ -273,10 +276,11 @@ describe('openings', () => {
 
     resizeOpening(room, door.id, 2000);
     expect(room.openings[0]!.width).toBe(2000);
-    expect(room.openings[0]!.offset).toBe(2000); // pushed back to fit
+    expect(room.openings[0]!.offset).toBe(4000 - 57 - 2000); // pushed back to fit
 
+    // No wider than the wall between its neighbours' inside faces.
     resizeOpening(room, door.id, 99999);
-    expect(room.openings[0]!.width).toBe(4000);
+    expect(room.openings[0]!.width).toBe(4000 - 114);
   });
 
   it('ignores a non-positive resize', () => {
@@ -374,8 +378,12 @@ describe('openings follow their wall', () => {
     moveVertex(room, top.b, { x: 1000, y: 0 });
     refitOpenings(room, [top.id]);
 
-    expect(win.width).toBe(1000);
-    expect(win.offset).toBe(0);
+    // Exactly as wide as the wall's inside face now is (the right wall went
+    // diagonal, so that's not simply 1000 - 114), starting where it starts.
+    const span = interiorSpan(room, top);
+    expect(win.width).toBe(Math.round(span.end - span.start));
+    expect(win.width).toBeLessThan(1000);
+    expect(win.offset).toBe(Math.round(span.start));
   });
 
   it('does not ratchet while a corner is dragged past an opening and back', () => {
@@ -414,5 +422,28 @@ describe('setInteriorWallLength', () => {
     expect(Math.round(interiorWallLength(room, top))).toBe(4000);
     // The room stays rectangular, and its floor grows to match.
     expect(Math.round(interiorArea(room))).toBe(4000 * (3000 - 114));
+  });
+});
+
+describe('inside faces and openings', () => {
+  it('keeps a door out of the neighbouring wall at either end', () => {
+    const room = rectangularRoom(3000, 3000);
+    const door = addOpening(room, room.walls[0]!.id, { kind: 'door', offset: 0, width: 900 })!;
+    expect(door.offset).toBe(57);
+  });
+});
+
+describe('setInteriorWallLength at an angle', () => {
+  it('lands on the typed length even when the next wall is not square', () => {
+    // The wall after the first leaves at 45°, so it pivots rather than sliding.
+    const room = roomFromPolygon([
+      { x: 0, y: 0 },
+      { x: 4000, y: 0 },
+      { x: 6000, y: 2000 },
+      { x: 0, y: 2000 },
+    ]);
+    const first = room.walls[0]!;
+    setInteriorWallLength(room, first.id, 3500);
+    expect(Math.round(interiorWallLength(room, first))).toBe(3500);
   });
 });

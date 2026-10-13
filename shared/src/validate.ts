@@ -122,7 +122,9 @@ function checkProject(v: unknown): void {
     wallIds.add(str(wall.id, `${path}.id`));
     for (const end of ['a', 'b'] as const) {
       const ref = str(wall[end], `${path}.${end}`);
-      if (!(ref in vertices)) fail(`${path}.${end}`, `refers to missing vertex ${ref}`);
+      // Own keys only: `in` would also accept "constructor" or "toString".
+      if (!Object.hasOwn(vertices, ref))
+        fail(`${path}.${end}`, `refers to missing vertex ${ref}`);
     }
     num(wall.thickness, `${path}.thickness`, { min: 0 });
   });
