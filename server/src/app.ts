@@ -36,6 +36,43 @@ export interface AppOptions {
  */
 export function createApp({ serveClient = false }: AppOptions = {}): express.Express {
   const app = express();
+  app.disable('x-powered-by');
+
+  /*
+    Refuse requests addressed to any name but this machine's.
+
+    Binding to loopback keeps other machines out, but not other websites: a
+    page can point its own hostname at 127.0.0.1 (DNS rebinding), and the
+    browser then treats this server as same-origin with it, so CORS never
+    applies. The Host header is the one thing that page can't fake, because it
+    still carries the page's own name. Vite's dev server and Jupyter guard the
+    same way. ALLOWED_HOSTS adds names for a deliberate LAN or proxy setup.
+  */
+  const allowedHosts = new Set([
+    'localhost',
+    '127.0.0.1',
+    '[::1]',
+    ...(process.env.ALLOWED_HOSTS ?? '')
+      .split(',')
+      .map((h) => h.trim().toLowerCase())
+      .filter(Boolean),
+  ]);
+  app.use((req, res, next) => {
+    const host = (req.hostname ?? '').toLowerCase();
+    if (allowedHosts.has(host) || host.endsWith('.localhost')) return next();
+    res.status(403).json({
+      error: `requests for host "${host}" are refused; add it to ALLOWED_HOSTS if you meant to serve it`,
+    });
+  });
+
+  // Basic hardening headers. A Content-Security-Policy is left for later: it
+  // has to be tuned against the built client or it breaks the app.
+  app.use((_req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    next();
+  });
 
   // In production the client is served from this same origin, so CORS is
   // pointless there. In dev it's the Vite proxy, plus curl from a terminal.

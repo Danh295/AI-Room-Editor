@@ -12,9 +12,10 @@ const saveProject = vi.hoisted(() => vi.fn());
 const getLibrary = vi.hoisted(() => vi.fn());
 const saveLibraryItem = vi.hoisted(() => vi.fn());
 const deleteLibraryItem = vi.hoisted(() => vi.fn());
+const getProject = vi.hoisted(() => vi.fn());
 
 vi.mock('../api.js', () => ({
-  api: { saveProject, getLibrary, saveLibraryItem, deleteLibraryItem },
+  api: { saveProject, getProject, getLibrary, saveLibraryItem, deleteLibraryItem },
 }));
 
 const { useEditor } = await import('./editorStore.js');
@@ -59,6 +60,7 @@ function reset(library: LibraryItem[] = [sofa()]): Project {
 
 beforeEach(() => {
   vi.useFakeTimers();
+  getProject.mockReset();
   saveProject.mockReset().mockImplementation(async (p: Project) => ({
     ...p,
     updatedAt: new Date().toISOString(),
@@ -411,5 +413,80 @@ describe('saving', () => {
     expect(saveProject).not.toHaveBeenCalled();
     expect(useEditor.getState().project).toBeNull();
     expect(useEditor.getState().saveState).toBe('idle');
+  });
+});
+
+describe('switching projects', () => {
+  const other = (): Project => ({
+    ...useEditor.getState().project!,
+    id: 'proj_other',
+    name: 'Other room',
+  });
+
+  it('saves the outgoing project before opening another', async () => {
+    getProject.mockResolvedValue(other());
+    useEditor.getState().edit((d) => {
+      d.name = 'moved the sofa';
+    });
+
+    // Switch inside the debounce window, before the autosave would fire.
+    await useEditor.getState().loadProject('proj_other');
+
+    expect(saveProject).toHaveBeenCalledTimes(1);
+    expect(saveProject.mock.calls[0]![0]).toMatchObject({
+      id: 'proj_test',
+      name: 'moved the sofa',
+    });
+    expect(useEditor.getState().project?.id).toBe('proj_other');
+
+    // And the disarmed debounce doesn't fire later and write the new project.
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(saveProject).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits for a save already in flight', async () => {
+    let release: (value: Project) => void = () => {};
+    saveProject.mockImplementationOnce(
+      () => new Promise<Project>((resolve) => (release = resolve)),
+    );
+    getProject.mockResolvedValue(other());
+
+    useEditor.getState().edit((d) => {
+      d.name = 'in flight';
+    });
+    await vi.advanceTimersByTimeAsync(700);
+    const switching = useEditor.getState().loadProject('proj_other');
+    expect(getProject).not.toHaveBeenCalled();
+
+    release({ ...useEditor.getState().project!, updatedAt: 'later' });
+    await switching;
+    expect(useEditor.getState().project?.id).toBe('proj_other');
+  });
+
+  it('keeps the project open when its last save fails', async () => {
+    saveProject.mockRejectedValue(new Error('disk full'));
+    getProject.mockResolvedValue(other());
+    useEditor.getState().edit((d) => {
+      d.name = 'unsaved';
+    });
+
+    await useEditor.getState().loadProject('proj_other');
+
+    expect(getProject).not.toHaveBeenCalled();
+    expect(useEditor.getState().project?.name).toBe('unsaved');
+    expect(useEditor.getState().loadError).toMatch(/still open.*disk full/);
+  });
+
+  it('saves the outgoing project before starting a new one', async () => {
+    useEditor.getState().edit((d) => {
+      d.name = 'before new';
+    });
+    await useEditor.getState().newProject('Fresh');
+
+    expect(saveProject.mock.calls[0]![0]).toMatchObject({
+      id: 'proj_test',
+      name: 'before new',
+    });
+    expect(useEditor.getState().project?.name).toBe('Fresh');
   });
 });

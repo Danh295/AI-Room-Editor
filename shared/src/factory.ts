@@ -16,6 +16,7 @@ import type {
   Wall,
 } from './types.js';
 import { defaultGridStep, MM_PER_INCH } from './units.js';
+import { PROJECT_SCHEMA_VERSION } from './validate.js';
 import {
   defaultClearances,
   defaultFootprint,
@@ -140,6 +141,7 @@ export function createProject(name = 'Untitled room', units: UnitSystem = 'imper
   return {
     id: newId('proj'),
     name,
+    schemaVersion: PROJECT_SCHEMA_VERSION,
     settings: defaultSettings(units),
     room: emptyRoom(),
     items: [],

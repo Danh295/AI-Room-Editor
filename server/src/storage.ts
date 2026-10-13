@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { LibraryItem, Project, ProjectSummary } from '@room/shared';
+import { PROJECT_SCHEMA_VERSION, migrateProject } from '@room/shared';
 import { LIBRARY_FILE, PROJECTS_DIR, projectPath, ensureDataDirs } from './paths.js';
 
 /**
@@ -38,9 +39,15 @@ export async function listProjects(): Promise<ProjectSummary[]> {
 
   for (const entry of entries) {
     if (!entry.endsWith('.json')) continue;
-    const project = await readJson<Project>(path.join(PROJECTS_DIR, entry));
     // Skip anything unreadable rather than failing the whole listing — one
     // hand-edited file with a stray comma shouldn't hide every other project.
+    let project: Project | null;
+    try {
+      project = await readJson<Project>(path.join(PROJECTS_DIR, entry));
+    } catch (err) {
+      console.warn(`[storage] skipping unreadable project ${entry}: ${(err as Error).message}`);
+      continue;
+    }
     if (!project?.id) continue;
     summaries.push({
       id: project.id,
@@ -55,11 +62,16 @@ export async function listProjects(): Promise<ProjectSummary[]> {
 }
 
 export async function readProject(id: string): Promise<Project | null> {
-  return readJson<Project>(projectPath(id));
+  const raw = await readJson<Project>(projectPath(id));
+  return raw ? migrateProject(raw) : null;
 }
 
 export async function writeProject(project: Project): Promise<Project> {
-  const stamped: Project = { ...project, updatedAt: new Date().toISOString() };
+  const stamped: Project = {
+    ...project,
+    schemaVersion: PROJECT_SCHEMA_VERSION,
+    updatedAt: new Date().toISOString(),
+  };
   await writeJsonAtomic(projectPath(stamped.id), stamped);
   return stamped;
 }

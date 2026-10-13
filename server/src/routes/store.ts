@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import type { LibraryItem, Project } from '@room/shared';
+import { PROJECT_SCHEMA_VERSION, libraryItemProblem, projectProblem } from '@room/shared';
 import { isSafeId } from '../paths.js';
 import {
   deleteLibraryItem,
@@ -33,13 +34,17 @@ storeRouter.put('/projects/:id', async (req, res) => {
   const { id } = req.params;
   if (!isSafeId(id)) return res.status(400).json({ error: 'invalid project id' });
 
-  const body = req.body as Project | undefined;
-  if (!body || typeof body !== 'object') {
-    return res.status(400).json({ error: 'expected a project body' });
-  }
   // Trust the URL over the payload so a stale client can't write one project's
   // contents into another's file.
-  return res.json(await writeProject({ ...body, id }));
+  const body = { ...(req.body as Project), id };
+  const problem = projectProblem(body);
+  if (problem) return res.status(400).json({ error: `invalid project: ${problem}` });
+  // Written by a newer build: saving it through this one would stamp it with
+  // the older version and silently drop whatever the newer shape added.
+  if ((body.schemaVersion ?? 0) > PROJECT_SCHEMA_VERSION) {
+    return res.status(409).json({ error: 'project was saved by a newer version of the app' });
+  }
+  return res.json(await writeProject(body));
 });
 
 storeRouter.delete('/projects/:id', async (req, res) => {
@@ -59,6 +64,10 @@ storeRouter.put('/library', async (req, res) => {
   if (!Array.isArray(items)) {
     return res.status(400).json({ error: 'expected an array of library items' });
   }
+  for (const [i, item] of items.entries()) {
+    const problem = libraryItemProblem(item, `items[${i}]`);
+    if (problem) return res.status(400).json({ error: `invalid library: ${problem}` });
+  }
   await writeLibrary(items);
   return res.json({ count: items.length });
 });
@@ -67,11 +76,10 @@ storeRouter.put('/library/:id', async (req, res) => {
   const { id } = req.params;
   if (!isSafeId(id)) return res.status(400).json({ error: 'invalid item id' });
 
-  const body = req.body as LibraryItem | undefined;
-  if (!body || typeof body !== 'object') {
-    return res.status(400).json({ error: 'expected a library item body' });
-  }
-  return res.json(await upsertLibraryItem({ ...body, id }));
+  const body = { ...(req.body as LibraryItem), id };
+  const problem = libraryItemProblem(body);
+  if (problem) return res.status(400).json({ error: `invalid library item: ${problem}` });
+  return res.json(await upsertLibraryItem(body));
 });
 
 storeRouter.delete('/library/:id', async (req, res) => {
