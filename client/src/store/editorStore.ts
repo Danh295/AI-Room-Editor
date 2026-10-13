@@ -176,6 +176,14 @@ let inFlight: Promise<void> | null = null;
  */
 let saveRefused = false;
 
+/**
+ * A room switch is settling the outgoing project. Edits are frozen meanwhile:
+ * accepting them would leave the project dirty again behind the save that is
+ * meant to be its last, and the switch would either drop them or have to chase
+ * them indefinitely. The window is one save round trip plus one load.
+ */
+let switching = false;
+
 export const useEditor = create<EditorState>((set, get) => {
   function scheduleSave() {
     set({ saveState: 'dirty' });
@@ -207,26 +215,20 @@ export const useEditor = create<EditorState>((set, get) => {
    * whether that worked so a failure can keep the old project open.
    */
   async function settlePending(): Promise<'clear' | 'blocked' | 'refused'> {
-    // An edit can land while this waits (the user keeps working while the
-    // save is out), which leaves the project dirty again. So keep going until
-    // it's on disk or a save fails; a few rounds covers any real typing speed.
-    for (let round = 0; round < 5; round += 1) {
-      saveTimer = clearTimer(saveTimer);
-      retryTimer = clearTimer(retryTimer);
-      retryDelayMs = 0;
+    saveTimer = clearTimer(saveTimer);
+    retryTimer = clearTimer(retryTimer);
+    retryDelayMs = 0;
 
-      if (inFlight) await inFlight;
-      const { project, saveState } = get();
-      const pending = saveState === 'dirty' || (saveState === 'error' && !saveRefused);
-      if (!project || !pending) break;
-      await get().save();
-      // A failure here is reported to the caller, not retried behind its back.
-      retryTimer = clearTimer(retryTimer);
-      if (get().saveState === 'error') break;
-    }
+    // Edits are frozen while switching, so after the save already out (if
+    // any) at most one more is needed.
+    if (inFlight) await inFlight;
+    const { project, saveState } = get();
+    if (!project) return 'clear';
+    if (saveState === 'dirty' || (saveState === 'error' && !saveRefused)) await get().save();
+    // A failure here is reported to the caller, not retried behind its back.
+    retryTimer = clearTimer(retryTimer);
 
-    const state = get().saveState;
-    if (state !== 'error' && state !== 'dirty') return 'clear';
+    if (get().saveState !== 'error') return 'clear';
     return saveRefused ? 'refused' : 'blocked';
   }
 
@@ -247,26 +249,33 @@ export const useEditor = create<EditorState>((set, get) => {
   }
 
   /**
-   * Settle the outgoing project, then say whether to switch and what to tell
-   * the user. A network failure keeps the old project open (retrying later can
-   * still save it); a refusal can't succeed however often it's retried, so the
-   * switch goes ahead and the loss is reported rather than trapping the user.
+   * Run a room switch: settle the outgoing project, then, unless that failed,
+   * `open` the next one. A network failure keeps the old project open
+   * (retrying later can still save it); a refusal can't succeed however often
+   * it's retried, so the switch goes ahead and the loss is reported rather
+   * than trapping the user. Edits are frozen for the whole of it.
    */
-  async function beforeSwitch(): Promise<{ go: boolean; notice: string | null }> {
-    const outcome = await settlePending();
-    if (outcome === 'blocked') {
-      set({ loadError: switchBlocked() });
-      return { go: false, notice: null };
+  async function runSwitch(open: (notice: string | null) => Promise<void>): Promise<void> {
+    if (switching) return; // a second click while one switch is running
+    switching = true;
+    try {
+      const outcome = await settlePending();
+      if (outcome === 'blocked') {
+        set({ loadError: switchBlocked() });
+        return;
+      }
+      const notice = outcome === 'refused' ? switchedPastRefusal() : null;
+      saveRefused = false;
+      await open(notice);
+    } finally {
+      switching = false;
     }
-    const notice = outcome === 'refused' ? switchedPastRefusal() : null;
-    saveRefused = false;
-    return { go: true, notice };
   }
 
   /** Replace the project and mark it dirty, with optional history push. */
   function commit(next: Project, pushHistory: boolean) {
     const { project, past } = get();
-    if (!project) return;
+    if (!project || switching) return;
 
     set({
       project: next,
@@ -295,48 +304,39 @@ export const useEditor = create<EditorState>((set, get) => {
     loadError: null,
 
     async loadProject(id) {
-      const { go, notice } = await beforeSwitch();
-      if (!go) return;
-      set({ loading: true, loadError: notice });
-      try {
-        const project = await api.getProject(id);
-        // Edits made to the old project while the new one was loading still
-        // need to land before it's replaced.
-        if (get().saveState === 'dirty') {
-          const again = await beforeSwitch();
-          if (!again.go) {
-            set({ loading: false });
-            return;
-          }
+      await runSwitch(async (notice) => {
+        set({ loading: true, loadError: notice });
+        try {
+          const project = await api.getProject(id);
+          set({
+            project,
+            past: [],
+            future: [],
+            gestureBase: null,
+            selection: [],
+            loading: false,
+            saveState: 'saved',
+          });
+        } catch (err) {
+          set({ loading: false, loadError: (err as Error).message });
         }
+      });
+    },
+
+    async newProject(name) {
+      await runSwitch(async (notice) => {
+        const project = createProject(name);
         set({
           project,
           past: [],
           future: [],
           gestureBase: null,
           selection: [],
-          loading: false,
-          saveState: 'saved',
+          loadError: notice,
         });
-      } catch (err) {
-        set({ loading: false, loadError: (err as Error).message });
-      }
-    },
-
-    async newProject(name) {
-      const { go, notice } = await beforeSwitch();
-      if (!go) return;
-      const project = createProject(name);
-      set({
-        project,
-        past: [],
-        future: [],
-        gestureBase: null,
-        selection: [],
-        loadError: notice,
+        // Persist immediately so a refresh right after creation finds it.
+        await get().save();
       });
-      // Persist immediately so a refresh right after creation finds it.
-      await get().save();
     },
 
     async closeProject() {
@@ -357,6 +357,12 @@ export const useEditor = create<EditorState>((set, get) => {
       // A save already on the wire can't be recalled, so wait for it: a
       // delete sent before it lands would be undone by it.
       if (inFlight) await inFlight;
+      // Whatever that save reported is about a project that's gone, so don't
+      // leave its error (or the retry it armed) behind to block the next one.
+      retryTimer = clearTimer(retryTimer);
+      retryDelayMs = 0;
+      saveRefused = false;
+      set({ saveState: 'idle', saveError: null });
     },
 
     async loadLibrary() {
@@ -400,14 +406,14 @@ export const useEditor = create<EditorState>((set, get) => {
 
     cancelGesture() {
       const { gestureBase } = get();
-      if (!gestureBase) return;
+      if (!gestureBase || switching) return;
       set({ project: gestureBase, gestureBase: null });
       scheduleSave();
     },
 
     undo() {
       const { past, future, project, gestureBase } = get();
-      if (gestureBase || !project || past.length === 0) return;
+      if (gestureBase || !project || past.length === 0 || switching) return;
       const previous = past[past.length - 1]!;
       set({
         project: previous,
@@ -419,7 +425,7 @@ export const useEditor = create<EditorState>((set, get) => {
 
     redo() {
       const { past, future, project, gestureBase } = get();
-      if (gestureBase || !project || future.length === 0) return;
+      if (gestureBase || !project || future.length === 0 || switching) return;
       const next = future[0]!;
       set({
         project: next,

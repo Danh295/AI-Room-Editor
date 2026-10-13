@@ -447,3 +447,38 @@ describe('setInteriorWallLength at an angle', () => {
     expect(Math.round(interiorWallLength(room, first))).toBe(3500);
   });
 });
+
+describe('refitting after a typed length', () => {
+  const angled = () =>
+    roomFromPolygon([
+      { x: 0, y: 0 },
+      { x: 4000, y: 0 },
+      { x: 6000, y: 2000 },
+      { x: 0, y: 2000 },
+    ]);
+
+  it('does not narrow an opening on an overshooting correction step', () => {
+    const room = angled();
+    const first = room.walls[0]!;
+    const win = addOpening(room, first.id, { kind: 'window', offset: 2000, width: 1800 })!;
+    setInteriorWallLength(room, first.id, 3900);
+    // The face is long enough for it once the length has settled, so it keeps its width.
+    const span = interiorSpan(room, first);
+    expect(span.end - span.start).toBeGreaterThan(1800);
+    expect(win.width).toBe(1800);
+  });
+
+  it('refits the wall beyond a neighbour that pivoted', () => {
+    // Walls: 0 top, 1 diagonal right side, 2 bottom, 3 left.
+    const room = angled();
+    const bottom = room.walls[2]!;
+    // Flush against the diagonal wall's inside face, at bottom's `a` end.
+    const door = addOpening(room, bottom.id, { kind: 'door', offset: 0, width: 800 })!;
+    const before = door.offset;
+
+    setWallLength(room, room.walls[0]!.id, 3000); // the diagonal wall pivots
+
+    expect(door.offset).not.toBe(before);
+    expect(door.offset).toBeGreaterThanOrEqual(Math.floor(interiorSpan(room, bottom).start));
+  });
+});

@@ -37,13 +37,15 @@ storeRouter.put('/projects/:id', async (req, res) => {
   // Trust the URL over the payload so a stale client can't write one project's
   // contents into another's file.
   const body = { ...(req.body as Project), id };
-  const problem = projectProblem(body);
-  if (problem) return res.status(400).json({ error: `invalid project: ${problem}` });
   // Written by a newer build: saving it through this one would stamp it with
-  // the older version and silently drop whatever the newer shape added.
-  if ((body.schemaVersion ?? 0) > PROJECT_SCHEMA_VERSION) {
+  // the older version and silently drop whatever the newer shape added. Checked
+  // before the shape, which a newer build may well have changed.
+  const version = (body as { schemaVersion?: unknown }).schemaVersion;
+  if (typeof version === 'number' && version > PROJECT_SCHEMA_VERSION) {
     return res.status(409).json({ error: 'project was saved by a newer version of the app' });
   }
+  const problem = projectProblem(body);
+  if (problem) return res.status(400).json({ error: `invalid project: ${problem}` });
   return res.json(await writeProject(body));
 });
 

@@ -498,7 +498,7 @@ describe('switching projects', () => {
     expect(useEditor.getState().loadError).toMatch(/refused.*rejected.*bad wall/);
   });
 
-  it('saves an edit made while the switch was already saving', async () => {
+  it('freezes edits while a switch settles, so none are silently dropped', async () => {
     let release: (value: Project) => void = () => {};
     saveProject.mockImplementationOnce(
       () => new Promise<Project>((resolve) => (release = resolve)),
@@ -510,16 +510,45 @@ describe('switching projects', () => {
 
     const switching = useEditor.getState().loadProject('proj_other');
     await vi.advanceTimersByTimeAsync(0);
-    // The user keeps working while the settling save is out.
+    // An edit mid-switch doesn't land on the outgoing room behind its last save.
     useEditor.getState().edit((d) => {
       d.name = 'second';
     });
+    expect(useEditor.getState().project?.name).toBe('first');
+
     release({ ...useEditor.getState().project!, updatedAt: 'later' });
     await switching;
 
-    const saved = saveProject.mock.calls.map((c) => (c[0] as Project).name);
-    expect(saved).toContain('second');
+    expect(saveProject.mock.calls.map((c) => (c[0] as Project).name)).toEqual(['first']);
     expect(useEditor.getState().project?.id).toBe('proj_other');
+
+    // And editing works again once the new room is open.
+    useEditor.getState().edit((d) => {
+      d.name = 'renamed';
+    });
+    expect(useEditor.getState().project?.name).toBe('renamed');
+  });
+
+  it('a failed save on a room being closed does not block opening the next', async () => {
+    let fail: (err: Error) => void = () => {};
+    saveProject.mockImplementationOnce(
+      () => new Promise<Project>((_, reject) => (fail = reject)),
+    );
+    getProject.mockResolvedValue(other());
+    useEditor.getState().edit((d) => {
+      d.name = 'deleting this';
+    });
+    await vi.advanceTimersByTimeAsync(700);
+
+    const closing = useEditor.getState().closeProject();
+    fail(new Error('network down'));
+    await closing;
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(useEditor.getState().saveState).toBe('idle');
+
+    await useEditor.getState().loadProject('proj_other');
+    expect(useEditor.getState().project?.id).toBe('proj_other');
+    expect(useEditor.getState().loadError).toBeNull();
   });
 
   it('waits for a save in flight before closing (so a delete lands last)', async () => {

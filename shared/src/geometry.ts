@@ -387,11 +387,15 @@ export function interiorWallSegment(room: Room, wall: Wall): Segment | null {
  * between the inside faces of the walls at either end. An opening has to fit
  * here: anything nearer the ends is buried in the neighbouring wall.
  */
-export function interiorSpan(room: Room, wall: Wall): { start: number; end: number } {
+export function interiorSpan(
+  room: Room,
+  wall: Wall,
+  faces: Map<string, Segment> = interiorWallSegments(room),
+): { start: number; end: number } {
   const seg = wallSegment(room, wall);
   if (!seg) return { start: 0, end: 0 };
   const len = distance(seg.a, seg.b);
-  const face = interiorWallSegment(room, wall);
+  const face = faces.get(wall.id);
   if (!face || len < EPS) return { start: 0, end: len };
   const dir = normalize(sub(seg.b, seg.a));
   const along = (p: Pt) => dot(sub(p, seg.a), dir);

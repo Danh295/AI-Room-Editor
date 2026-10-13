@@ -7,6 +7,7 @@
  */
 
 import type { Opening, OpeningKind, Room, Wall } from './types.js';
+import type { Segment } from './geometry.js';
 import { newId } from './factory.js';
 import {
   add,
@@ -20,6 +21,7 @@ import {
   sub,
   interiorSpan,
   interiorWallLength,
+  interiorWallSegments,
   wallLength,
   wallSegment,
 } from './geometry.js';
@@ -49,12 +51,26 @@ export function wallsAtVertex(room: Room, vertexId: string): Wall[] {
  */
 export function refitOpenings(room: Room, wallIds: Iterable<string>): void {
   const ids = new Set(wallIds);
+  if (!room.openings.some((o) => ids.has(o.wallId))) return;
+  const faces = interiorWallSegments(room); // once, not once per opening
   for (const opening of room.openings) {
     if (!ids.has(opening.wallId)) continue;
     const wall = findWall(room, opening.wallId);
     if (!wall) continue;
-    Object.assign(opening, fitOnWall(room, wall, opening.offset, opening.width));
+    Object.assign(opening, fitOnWall(room, wall, opening.offset, opening.width, faces));
   }
+}
+
+/**
+ * The walls whose inside faces a move of these corners can change: the walls
+ * at them, and the walls next to those, since a wall that pivots moves the
+ * inside corner at its far end too.
+ */
+export function wallsNear(room: Room, vertexIds: Iterable<string>): string[] {
+  const direct = new Set<string>(vertexIds);
+  const touched = room.walls.filter((w) => direct.has(w.a) || direct.has(w.b));
+  const corners = new Set(touched.flatMap((w) => [w.a, w.b]));
+  return room.walls.filter((w) => corners.has(w.a) || corners.has(w.b)).map((w) => w.id);
 }
 
 /**
@@ -67,8 +83,9 @@ function fitOnWall(
   wall: Wall,
   offset: number,
   width: number,
+  faces?: Map<string, Segment>,
 ): { offset: number; width: number } {
-  const { start, end } = interiorSpan(room, wall);
+  const { start, end } = interiorSpan(room, wall, faces);
   const fitted = Math.round(Math.min(width, end - start));
   const clamped = start + clampOpening(end - start, offset - start, fitted);
   return { offset: Math.round(clamped), width: fitted };
@@ -118,19 +135,27 @@ export function translateVertex(
  * whole loop and change nothing about the shape.
  */
 export function setWallLength(room: Room, wallId: string, newLength: number): boolean {
+  const moved = moveWallEnd(room, wallId, newLength);
+  if (!moved) return false;
+  refitOpenings(room, wallsNear(room, moved));
+  return true;
+}
+
+/** setWallLength without the opening refit; returns the corners it moved. */
+function moveWallEnd(room: Room, wallId: string, newLength: number): string[] | null {
   const wall = findWall(room, wallId);
-  if (!wall || newLength <= 0) return false;
+  if (!wall || newLength <= 0) return null;
 
   const seg = wallSegment(room, wall);
-  if (!seg) return false;
+  if (!seg) return null;
 
   const currentLength = distance(seg.a, seg.b);
-  if (currentLength < 1e-6) return false;
+  if (currentLength < 1e-6) return null;
 
   const dir = normalize(sub(seg.b, seg.a));
   const target = add(seg.a, scale(dir, newLength));
   const delta = sub(target, seg.b);
-  if (Math.abs(delta.x) < 0.5 && Math.abs(delta.y) < 0.5) return false;
+  if (Math.abs(delta.x) < 0.5 && Math.abs(delta.y) < 0.5) return null;
 
   const thisAngle = angleOf(sub(seg.b, seg.a));
 
@@ -150,12 +175,7 @@ export function setWallLength(room: Room, wallId: string, newLength: number): bo
     translateVertex(room, nextWall.b, delta);
     moved.push(nextWall.b);
   }
-  refitOpenings(
-    room,
-    moved.flatMap((id) => wallsAtVertex(room, id).map((w) => w.id)),
-  );
-
-  return true;
+  return moved;
 }
 
 /**
@@ -171,14 +191,19 @@ export function setInteriorWallLength(room: Room, wallId: string, newLength: num
   // Exact in one step when the neighbours are square to this wall. At any
   // other angle the neighbouring wall pivots and the inside corner moves a
   // little more or less than the end did, so correct by what's left over.
-  let changed = false;
+  // Openings are refitted once, after the last step: refitting an overshoot
+  // would narrow them, and the correcting step wouldn't widen them back.
+  const moved = new Set<string>();
   for (let i = 0; i < 4; i += 1) {
     const error = newLength - interiorWallLength(room, wall);
     if (Math.abs(error) < 0.5) break;
-    if (!setWallLength(room, wallId, wallLength(room, wall) + error)) break;
-    changed = true;
+    const step = moveWallEnd(room, wallId, wallLength(room, wall) + error);
+    if (!step) break;
+    step.forEach((id) => moved.add(id));
   }
-  return changed;
+  if (moved.size === 0) return false;
+  refitOpenings(room, wallsNear(room, moved));
+  return true;
 }
 
 /**
