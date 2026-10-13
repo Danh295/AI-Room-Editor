@@ -21,9 +21,20 @@ import {
   wallInwardNormal,
   openingMidpoint,
   clampOpening,
+  interiorPolygon,
+  interiorArea,
+  interiorWallLength,
 } from './geometry.js';
-import { rectangularRoom, lShapedRoom, emptyRoom } from './factory.js';
-import { MM_PER_FOOT } from './units.js';
+import {
+  rectangularRoom,
+  lShapedRoom,
+  emptyRoom,
+  roomFromInterior,
+  rectangleCorners,
+  lShapeCorners,
+  roomFromPolygon,
+} from './factory.js';
+import { MM_PER_FOOT, formatLength } from './units.js';
 
 const near = (a: number, b: number, tol = 1e-6) =>
   expect(Math.abs(a - b)).toBeLessThanOrEqual(tol);
@@ -284,5 +295,73 @@ describe('real-world sanity', () => {
     const room = rectangularRoom(12 * MM_PER_FOOT, 10 * MM_PER_FOOT);
     const sqft = roomArea(room) / (MM_PER_FOOT * MM_PER_FOOT);
     expect(Math.round(sqft)).toBe(120);
+  });
+});
+
+describe('inside faces', () => {
+  it('builds a room whose inside faces are exactly the sizes typed', () => {
+    const room = roomFromInterior(rectangleCorners(4000, 3000), 114);
+    const inner = interiorPolygon(room);
+    expect(inner.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) }))).toEqual(
+      rectangleCorners(4000, 3000),
+    );
+    near(interiorArea(room), 4000 * 3000, 1);
+    // The centrelines sit half a wall outside.
+    near(roomArea(room), 4114 * 3114, 1);
+  });
+
+  it('reads each wall as the length of its inside face', () => {
+    const room = roomFromInterior(rectangleCorners(4000, 3000), 114);
+    const lengths = room.walls.map((w) => Math.round(interiorWallLength(room, w)));
+    expect(lengths).toEqual([4000, 3000, 4000, 3000]);
+  });
+
+  it('round-trips an L-shape, including its reflex corner', () => {
+    const corners = lShapeCorners(5000, 4000, 2000, 1500);
+    const room = roomFromInterior(corners, 114);
+    const inner = interiorPolygon(room).map((p) => ({
+      x: Math.round(p.x),
+      y: Math.round(p.y),
+    }));
+    expect(inner).toEqual(corners);
+    near(interiorArea(room), 5000 * 4000 - 2000 * 1500, 2);
+  });
+
+  it('puts the inside inside, whichever way the loop winds', () => {
+    const forward = rectangularRoom(4000, 3000);
+    const reversed = roomFromPolygon([...rectangleCorners(4000, 3000)].reverse());
+    for (const room of [forward, reversed]) {
+      const inner = interiorPolygon(room);
+      for (const p of inner) expect(pointInPolygon(p, roomPolygon(room))).toBe(true);
+      near(interiorArea(room), (4000 - 114) * (3000 - 114), 1);
+    }
+  });
+
+  it('copes with a straight run split in two (parallel neighbours)', () => {
+    const room = roomFromPolygon([
+      { x: 0, y: 0 },
+      { x: 2000, y: 0 },
+      { x: 4000, y: 0 },
+      { x: 4000, y: 3000 },
+      { x: 0, y: 3000 },
+    ]);
+    const inner = interiorPolygon(room);
+    expect(inner.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y))).toBe(true);
+    near(inner[1]!.y, 57, 1e-6);
+    near(interiorArea(room), (4000 - 114) * (3000 - 114), 1);
+  });
+
+  it('survives an odd thickness: a typed 12 ft still reads as 12 ft', () => {
+    const twelveFt = Math.round(12 * MM_PER_FOOT);
+    const room = roomFromInterior(rectangleCorners(twelveFt, twelveFt), 115);
+    const len = interiorWallLength(room, room.walls[0]!);
+    expect(formatLength(Math.round(len), 'imperial')).toBe(formatLength(twelveFt, 'imperial'));
+  });
+
+  it('falls back to centrelines for walls that do not close', () => {
+    const room = rectangularRoom(4000, 3000);
+    room.walls.pop();
+    expect(interiorWallLength(room, room.walls[0]!)).toBe(4000);
+    expect(interiorPolygon(room)).toEqual(roomPolygon(room));
   });
 });

@@ -13,9 +13,18 @@ import {
   startChain,
   closeChain,
   wallsAtVertex,
+  setInteriorWallLength,
 } from './roomOps.js';
 import { rectangularRoom, lShapedRoom, emptyRoom } from './factory.js';
-import { roomPolygon, roomArea, wallLength, wallAngle, polygonArea } from './geometry.js';
+import {
+  roomPolygon,
+  roomArea,
+  wallLength,
+  wallAngle,
+  polygonArea,
+  interiorWallLength,
+  interiorArea,
+} from './geometry.js';
 import { MM_PER_FOOT } from './units.js';
 
 describe('setWallLength', () => {
@@ -378,5 +387,16 @@ describe('openings follow their wall', () => {
     expect(half.id).not.toBe(wallId);
     expect(door.offset).toBeGreaterThanOrEqual(0);
     expect(door.offset + door.width).toBeLessThanOrEqual(wallLength(room, half));
+  });
+});
+
+describe('setInteriorWallLength', () => {
+  it('sets the length a tape measure along the inside would read', () => {
+    const room = rectangularRoom(4000, 3000);
+    const top = room.walls[0]!;
+    expect(setInteriorWallLength(room, top.id, 4000)).toBe(true);
+    expect(Math.round(interiorWallLength(room, top))).toBe(4000);
+    // The room stays rectangular, and its floor grows to match.
+    expect(Math.round(interiorArea(room))).toBe(4000 * (3000 - 114));
   });
 });

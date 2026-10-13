@@ -4,12 +4,13 @@ import {
   MM_PER_FOOT,
   formatArea,
   formatLength,
-  rectangularRoom,
-  lShapedRoom,
-  roomArea,
+  roomFromInterior,
+  rectangleCorners,
+  lShapeCorners,
+  interiorArea,
   roomPolygon,
-  wallLength,
-  setWallLength,
+  interiorWallLength,
+  setInteriorWallLength,
   deleteWall,
   deleteOpening,
   resizeOpening,
@@ -69,9 +70,14 @@ function QuickRoom({ onClose }: { onClose: () => void }) {
     edit((d) => {
       d.room = {
         ...d.room,
-        ...(shape === 'rect'
-          ? rectangularRoom(width, depth, thickness)
-          : lShapedRoom(width, depth, notchW, notchD, thickness)),
+        // The sizes typed here are inside measurements, so the walls go
+        // outside them.
+        ...roomFromInterior(
+          shape === 'rect'
+            ? rectangleCorners(width, depth)
+            : lShapeCorners(width, depth, notchW, notchD),
+          thickness,
+        ),
         ceilingHeight: d.room.ceilingHeight,
       };
       // The old outline is gone, so openings that referenced it must go too.
@@ -193,7 +199,7 @@ export default function RoomPanel() {
         <span>Walls</span>
         <b>{room.walls.length}</b>
         <span>Area</span>
-        <b>{polygon.length >= 3 ? formatArea(roomArea(room), units) : '—'}</b>
+        <b>{polygon.length >= 3 ? formatArea(interiorArea(room), units) : '—'}</b>
         <span>Ceiling</span>
         <b>{formatLength(room.ceilingHeight, units)}</b>
       </div>
@@ -211,13 +217,13 @@ export default function RoomPanel() {
           <div className="field-row">
             <label>Length</label>
             <LengthInput
-              value={Math.round(wallLength(room, selectedWall))}
+              value={Math.round(interiorWallLength(room, selectedWall))}
               units={units}
               autoFocus
               aria-label="Wall length"
               onCommit={(mm) =>
                 edit((d) => {
-                  setWallLength(d.room, selectedWall.id, mm);
+                  setInteriorWallLength(d.room, selectedWall.id, mm);
                 })
               }
             />

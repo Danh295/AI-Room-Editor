@@ -266,9 +266,124 @@ export function roomPolygon(room: Room): Pt[] {
   return order.map((id) => room.vertices[id]).filter((v): v is Pt => Boolean(v));
 }
 
-/** Interior floor area of the room in square millimeters. */
+/**
+ * Area enclosed by the wall centrelines, in square millimetres.
+ *
+ * This is not the floor you can stand on: walls are centred on their
+ * vertices, so half of each one sits inside this outline. Use `interiorArea`
+ * for anything shown to the user.
+ */
 export function roomArea(room: Room): number {
   return polygonArea(roomPolygon(room));
+}
+
+// ------------------------------------------------------------ inside faces ---
+//
+// Walls are stored on their centrelines, and everything that draws or snaps to
+// them works from there. People measure rooms the other way, with a tape
+// against the inside faces, so every size a user types or reads is converted
+// at that edge: these functions turn centrelines into inside faces and back.
+
+/** The walls in loop order when they form one closed chain, or null. */
+function wallLoop(room: Room): Wall[] | null {
+  if (room.walls.length < 3) return null;
+  const byStart = new Map<string, Wall>();
+  for (const wall of room.walls) byStart.set(wall.a, wall);
+
+  const first = room.walls[0]!;
+  const loop: Wall[] = [];
+  let wall: Wall | undefined = first;
+  while (wall && loop.length <= room.walls.length) {
+    loop.push(wall);
+    wall = byStart.get(wall.b);
+    if (wall === first) break;
+  }
+  return wall === first && loop.length === room.walls.length ? loop : null;
+}
+
+/**
+ * Shift each edge of a closed polygon sideways and re-join the edges at mitred
+ * corners. `offsets[i]` moves edge i (from point i to point i+1) toward the
+ * inside when positive and outward when negative, whichever way the polygon
+ * winds. Where two neighbouring edges are parallel (a wall split in two) the
+ * corner just moves along its edge's normal.
+ */
+export function offsetPolygon(points: Pt[], offsets: number[]): Pt[] {
+  const n = points.length;
+  if (n < 3) return points.map((p) => ({ ...p }));
+
+  // Positive signed area is clockwise on screen, where the inside of an edge
+  // is on its `perpendicular` side.
+  const inwardSign = signedArea(points) >= 0 ? 1 : -1;
+  const shifted: Segment[] = points.map((a, i) => {
+    const b = points[(i + 1) % n]!;
+    const normal = scale(perpendicular(normalize(sub(b, a))), inwardSign * (offsets[i] ?? 0));
+    return { a: add(a, normal), b: add(b, normal) };
+  });
+
+  return points.map((_, i) => {
+    const prev = shifted[(i - 1 + n) % n]!;
+    const cur = shifted[i]!;
+    return lineIntersection(prev, cur) ?? { ...cur.a };
+  });
+}
+
+/**
+ * The inside faces of the walls as a polygon: the floor you can actually use.
+ * `slack` grows it outward by that many millimetres, for containment tests
+ * that shouldn't flag something sitting exactly on a face. Falls back to the
+ * centreline outline when the walls don't close into a loop.
+ */
+export function interiorPolygon(room: Room, slack = 0): Pt[] {
+  return facePolygon(room, (w) => w.thickness / 2 - slack);
+}
+
+/** The outside faces of the walls: the room's full footprint on the plan. */
+export function exteriorPolygon(room: Room): Pt[] {
+  return facePolygon(room, (w) => -w.thickness / 2);
+}
+
+function facePolygon(room: Room, inset: (wall: Wall) => number): Pt[] {
+  const loop = wallLoop(room);
+  if (!loop) return roomPolygon(room);
+  const points = loop.map((w) => room.vertices[w.a]);
+  if (points.some((p) => !p)) return roomPolygon(room);
+  return offsetPolygon(points as Pt[], loop.map(inset));
+}
+
+/** Usable floor area inside the walls, in square millimetres. */
+export function interiorArea(room: Room): number {
+  return polygonArea(interiorPolygon(room));
+}
+
+/**
+ * A wall's inside face, from its `a` end to its `b` end. For a wall that isn't
+ * part of a closed loop there's no inside yet, so this is its centreline.
+ */
+export function interiorWallSegment(room: Room, wall: Wall): Segment | null {
+  const loop = wallLoop(room);
+  const index = loop ? loop.findIndex((w) => w.id === wall.id) : -1;
+  if (!loop || index < 0) return wallSegment(room, wall);
+  const inner = interiorPolygon(room);
+  return { a: inner[index]!, b: inner[(index + 1) % inner.length]! };
+}
+
+/** Length of a wall's inside face: what a tape measure along it reads. */
+export function interiorWallLength(room: Room, wall: Wall): number {
+  const seg = interiorWallSegment(room, wall);
+  return seg ? distance(seg.a, seg.b) : 0;
+}
+
+/**
+ * Centreline corners for walls of `thickness` whose inside faces meet at
+ * `points`: the inverse of `interiorPolygon`, for building a room from sizes
+ * someone measured or typed.
+ */
+export function centrelineFromInterior(points: Pt[], thickness: number): Pt[] {
+  return offsetPolygon(
+    points,
+    points.map(() => -thickness / 2),
+  );
 }
 
 /**

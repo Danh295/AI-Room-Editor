@@ -6,6 +6,7 @@ import {
   distance,
   moveVertex,
   roomPolygon,
+  exteriorPolygon,
   addOpeningNearPoint,
   findConflicts,
   snapToWall,
@@ -810,6 +811,8 @@ function keepFocus(e: React.MouseEvent): void {
 export function fitRoomToView(): void {
   const project = useEditor.getState().project;
   if (!project) return;
-  const polygon = roomPolygon(project.room);
-  useViewport.getState().fitTo(polygon);
+  // The outside faces, so the walls and the dimension lines beyond them land
+  // inside the frame rather than under the toolbars.
+  const polygon = exteriorPolygon(project.room);
+  useViewport.getState().fitTo(polygon, 90);
 }

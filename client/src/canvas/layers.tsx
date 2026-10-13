@@ -15,6 +15,7 @@ import {
   sub,
   wallInwardNormal,
   wallSegment,
+  interiorWallSegment,
 } from '@room/shared';
 import { visibleWorldRect, type ViewportState } from './viewport.js';
 import { assetUrl } from '../api.js';
@@ -420,16 +421,18 @@ export function DimensionLayer({ room, vp, units }: DimensionProps) {
   return (
     <Group listening={false}>
       {room.walls.map((wall) => {
-        const seg = wallSegment(room, wall);
+        // Sizes are the inside faces, the length a tape measure reads; the
+        // line is drawn outside the wall with its ends square to those faces.
+        const seg = interiorWallSegment(room, wall);
         if (!seg) return null;
 
         const len = distance(seg.a, seg.b);
         if (len < 1) return null;
 
-        // Push the dimension line to the outside of the room.
         const outward = vscale(wallInwardNormal(room, wall), -1);
-        const a = add(seg.a, vscale(outward, offset));
-        const b = add(seg.b, vscale(outward, offset));
+        const clear = wall.thickness + offset;
+        const a = add(seg.a, vscale(outward, clear));
+        const b = add(seg.b, vscale(outward, clear));
         const mid = vscale(add(a, b), 0.5);
         const dir = normalize(sub(b, a));
         const n = perpendicular(dir);
