@@ -14,6 +14,7 @@ import {
   closeChain,
   wallsAtVertex,
   setInteriorWallLength,
+  refitOpenings,
 } from './roomOps.js';
 import { rectangularRoom, lShapedRoom, emptyRoom } from './factory.js';
 import {
@@ -354,12 +355,13 @@ describe('openings follow their wall', () => {
     expect(door.width).toBe(800);
   });
 
-  it('pulls a window back when a corner is dragged inward', () => {
+  it('pulls a window back once a corner drag ends', () => {
     const room = rectangularRoom(4000, 3000);
     const top = room.walls[0]!;
     const win = addOpening(room, top.id, { kind: 'window', offset: 3000, width: 900 })!;
 
     moveVertex(room, top.b, { x: 2500, y: 0 });
+    refitOpenings(room, [top.id]);
 
     expect(win.offset + win.width).toBeLessThanOrEqual(wallLength(room, top));
   });
@@ -370,9 +372,23 @@ describe('openings follow their wall', () => {
     const win = addOpening(room, top.id, { kind: 'window', offset: 0, width: 1500 })!;
 
     moveVertex(room, top.b, { x: 1000, y: 0 });
+    refitOpenings(room, [top.id]);
 
     expect(win.width).toBe(1000);
     expect(win.offset).toBe(0);
+  });
+
+  it('does not ratchet while a corner is dragged past an opening and back', () => {
+    const room = rectangularRoom(4000, 3000);
+    const top = room.walls[0]!;
+    const win = addOpening(room, top.id, { kind: 'window', offset: 0, width: 1500 })!;
+
+    // Frames of one drag: in past the window, then back out.
+    moveVertex(room, top.b, { x: 1000, y: 0 });
+    moveVertex(room, top.b, { x: 4000, y: 0 });
+    refitOpenings(room, [top.id]);
+
+    expect(win.width).toBe(1500);
   });
 
   it('keeps an opening that straddles a split on one half, fully', () => {

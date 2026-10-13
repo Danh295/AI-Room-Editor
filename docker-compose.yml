@@ -17,4 +17,7 @@ services:
       # Optional — without it, drawing and manual entry still work; AI lookup
       # and floor plan tracing don't. See .env.example.
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      # Hostnames besides localhost the server will answer to, comma-separated.
+      # Needed if you reach it by a LAN name or through a proxy.
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-}
     restart: unless-stopped

@@ -42,7 +42,8 @@ export function wallsAtVertex(room: Room, vertexId: string): Wall[] {
  *
  * Every way a wall gets shorter — typing a length, dragging a corner,
  * splitting it — would otherwise leave a door hanging past the end, drawn and
- * collision-checked outside the room. The offset is clamped first; the width
+ * collision-checked outside the room. Call it once a move is finished, not
+ * per frame of a drag. The offset is clamped first; the width
  * only shrinks when the wall itself has become narrower than the opening.
  */
 export function refitOpenings(room: Room, wallIds: Iterable<string>): void {
@@ -58,17 +59,20 @@ export function refitOpenings(room: Room, wallIds: Iterable<string>): void {
   }
 }
 
-/** Move a vertex to an absolute position. Every attached wall, and its openings, follow. */
+/**
+ * Move a vertex to an absolute position. Every attached wall follows.
+ *
+ * Openings are deliberately left alone: a corner drag calls this once per
+ * frame on the live room, and refitting each frame would ratchet — drag past a
+ * window and back, and it would stay narrowed. Whoever finishes the move calls
+ * `refitOpenings` once: `setWallLength` does, and so does the end of a drag.
+ */
 export function moveVertex(room: Room, vertexId: string, to: { x: number; y: number }): void {
   const vertex = room.vertices[vertexId];
   if (!vertex) return;
   const snapped = snapInt(to);
   vertex.x = snapped.x;
   vertex.y = snapped.y;
-  refitOpenings(
-    room,
-    wallsAtVertex(room, vertexId).map((w) => w.id),
-  );
 }
 
 export function translateVertex(
@@ -126,9 +130,15 @@ export function setWallLength(room: Room, wallId: string, newLength: number): bo
     isPerpendicular(thisAngle, angleOf(sub(nextFar, seg.b)), 2);
 
   moveVertex(room, wall.b, target);
+  const moved = [wall.b];
   if (carryNeighbour && nextWall) {
     translateVertex(room, nextWall.b, delta);
+    moved.push(nextWall.b);
   }
+  refitOpenings(
+    room,
+    moved.flatMap((id) => wallsAtVertex(room, id).map((w) => w.id)),
+  );
 
   return true;
 }
